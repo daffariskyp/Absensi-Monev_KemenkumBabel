@@ -4,35 +4,29 @@
             <form action="{{ route('admin.update', $employee->id) }}" method="POST" enctype="multipart/form-data">
                 @csrf
                 @method('PUT')
-                <div class="flex items-center">
-                    <div id="image-preview" class="w-24 h-24 bg-zinc-200 rounded-full flex items-center justify-center overflow-hidden">
-                        @if ($employee->photo)
-                            <img src="{{ asset('/storage/' . $employee->photo) }}" alt="Uploaded Picture" class="w-full h-full object-cover">
-                            @else
-                            <span class="text-gray-400 text-sm">Preview</span>
-                            @endif
-                        </div>
-                    <div>
-                        @if ($employee->photo)
-                            <input type="hidden" name="old_photo" id="old_photo" value="{{ $employee->photo }}">
-                        @endif
+                @if($errors->any())
+                    <p role="alert" class="text-red-600 text-sm mb-4">
+                        Perubahan belum tersimpan. {{ $errors->first() }}
+                    </p>
+                @endif
+                <div class="flex flex-wrap items-center gap-3">
+                    <img id="image-preview"
+                        src="{{ $employee->photo ? asset('storage/' . $employee->photo) : asset('blank_profile.png') }}"
+                        alt="Pratinjau foto profil" class="w-24 h-24 rounded-full object-cover">
+                    <div class="min-w-0">
                         <div class="ml-5">
                             <h1 class="font-semibold text-xl">{{ $employee->user->name ?? 'No username' }}</h1>
                             <p class="tex-xs">{{ $employee->role->name ?? 'No devisi' }}</p>
                         </div>
-                        <div class="flex mt-2">
-                            <div class="ml-5 mr-3">
-                                <label for="photo"
-                                    class="cursor-pointer bg-sky-blue text-white text-xs font-medium px-4 py-1 rounded hover:bg-blue-600">
-                                    Upload Picture
-                                </label>
-                                <input id="photo" name="photo" id="photo" type="file" accept="image/*"
-                                    class="hidden" />
-                            </div>
-                            <button id="delete-button"
-                                class="bg-secondary-white text-[#7D7D7D] px-4 py-1 text-xs rounded font-medium">Deleted
-                                Picture
-                            </button>
+                        <div class="ml-5 mt-2">
+                            <label for="photo" class="block text-sm font-semibold">Foto profil</label>
+                            <input id="photo" name="photo" type="file" accept="image/jpeg,image/png,image/webp"
+                                aria-describedby="photo-help" class="block w-full text-sm">
+                            <p id="photo-help" class="text-xs mt-1">JPG, PNG, atau WebP hingga 5 MB.</p>
+                            @error('photo')
+                                <p class="text-red-600 text-xs">{{ $message }}</p>
+                            @enderror
+                            <button type="button" id="reset-photo" class="text-xs mt-2 underline" hidden>Batal pilih foto</button>
                         </div>
                     </div>
                 </div>
@@ -70,22 +64,11 @@
                         <select name="role_id" id="role_id"
                             class="w-[94%] primary-gray font-medium rounded-lg py-1.5 px-3 text-sm border border-gray-200 outline-none focus:ring-2 focus:ring-blue-400">
                             <option value="">Pilih Jabatan Pegawai</option>
-                            @php
-                                $hasKabag = false;
-                            @endphp
                             @foreach ($roles as $role)
-                                @if(stripos($role->name, 'kabag') !== false)
-                                    @php $hasKabag = true; @endphp
-                                @endif
                                 <option value="{{ $role->id }}" {{ old('role_id', $employee->role_id) == $role->id ? 'selected' : '' }}>
                                     {{ $role->name }}
                                 </option>
                             @endforeach
-                            @if(!$hasKabag)
-                                <option value="kabag_new" {{ old('role_id', $employee->role_id) == 'kabag_new' ? 'selected' : '' }}>
-                                    Kabag (Kepala Bagian)
-                                </option>
-                            @endif
                         </select>
                         @error('role_id')
                             <span class="text-red-600 text-xs">{{ $message }}</span>
@@ -303,7 +286,6 @@
                             <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                             Simpan Perubahan
                         </button>
-                        </button>
                     </div>
                 </div>
             </form>
@@ -438,31 +420,20 @@
 
     const fileInput = document.getElementById('photo');
     const imagePreview = document.getElementById('image-preview');
-    const deleteButton = document.getElementById('delete-button');
+    const resetPhoto = document.getElementById('reset-photo');
+    const savedPhoto = imagePreview.src;
+    let previewUrl;
 
-    // Fungsi untuk upload gambar
-    fileInput.addEventListener('change', (event) => {
-        const file = event.target.files[0];
-        if (file && file.type.startsWith('image/')) {
-            const reader = new FileReader();
-            reader.onload = (e) => {
-                imagePreview.innerHTML =
-                    `<img src="${e.target.result}" alt="Uploaded Picture" class="w-full h-full object-cover">`;
-            };
-            reader.readAsDataURL(file);
-        } else {
-            imagePreview.innerHTML = `<span class="text-gray-400 text-sm">Preview</span>`;
-        }
+    fileInput.addEventListener('change', () => {
+        if (previewUrl) URL.revokeObjectURL(previewUrl);
+        const file = fileInput.files[0];
+        previewUrl = file ? URL.createObjectURL(file) : null;
+        imagePreview.src = previewUrl ?? savedPhoto;
+        resetPhoto.hidden = !file;
     });
 
-    deleteButton.addEventListener('click', (event) => {
-        // Mencegah submit form dan refresh halaman
-        event.preventDefault();
-
-        // Reset preview ke kondisi awal
-        imagePreview.innerHTML = `<span class="text-gray-400 text-sm">Preview</span>`;
-
-        // Reset input file
-        fileInput.value = ''; // Membersihkan file yang terpilih
+    resetPhoto.addEventListener('click', () => {
+        fileInput.value = '';
+        fileInput.dispatchEvent(new Event('change'));
     });
 </script>

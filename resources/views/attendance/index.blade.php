@@ -159,7 +159,7 @@
                 @else
                     <!-- Form Absen Masuk Kamera -->
                     <div class="space-y-4">
-                        <p class="text-xs text-gray-600">Posisikan wajah Anda tegak di depan kamera. Ambil foto menggunakan kamera langsung atau live streaming.</p>
+                        <p class="text-xs text-gray-600">Posisikan wajah Anda tegak di depan kamera. Ambil foto menggunakan kamera langsung atau Aktifkan Kameraing.</p>
                         
                         <!-- Camera Area -->
                         <div class="relative bg-gray-900 rounded-xl overflow-hidden aspect-video flex items-center justify-center border-2 border-gray-300">
@@ -184,20 +184,10 @@
 
                         <!-- Camera Action Buttons -->
                         <div class="flex flex-wrap items-center justify-between gap-2">
-                            <!-- Direct Hardware/Mobile Camera Trigger (WORKS EVERYWHERE!) -->
-                            <input type="file" id="directCaptureIn" accept="image/*" capture="user" class="hidden" 
-                                onchange="handleDirectCapture(this, 'previewCheckIn', 'placeholderCheckIn', 'photoInputIn', 'btnSubmitIn', 'videoCheckIn', 'guideCheckIn')">
-                            
-                            <button type="button" onclick="document.getElementById('directCaptureIn').click()" 
-                                class="px-4 py-2 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg flex items-center gap-1.5 transition transform active:scale-95">
-                                <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                Buka Kamera HP / Perangkat
-                            </button>
-
                             <div class="flex items-center gap-1.5">
-                                <button type="button" id="btnStartCameraIn" onclick="initCamera('videoCheckIn', 'placeholderCheckIn', 'guideCheckIn', 'previewCheckIn', 'directCaptureIn')" class="btn-colorful px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-700 hover:to-blue-800 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 active:scale-95 border-2 border-transparent">
+                                <button type="button" id="btnStartCameraIn" onclick="initCamera('videoCheckIn', 'placeholderCheckIn', 'guideCheckIn', 'previewCheckIn', 'photoInputIn', 'btnSubmitIn')" class="btn-colorful px-3.5 py-2 bg-gradient-to-r from-indigo-600 to-blue-700 hover:from-indigo-700 hover:to-blue-800 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 active:scale-95 border-2 border-transparent">
                                     <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                    Live Stream
+                                    Aktifkan Kamera
                                 </button>
                                 <button type="button" id="btnCaptureIn" onclick="takeSnapshot('videoCheckIn', 'canvasCheckIn', 'previewCheckIn', 'photoInputIn', 'btnSubmitIn', 'guideCheckIn')" class="btn-colorful px-4 py-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition transform active:scale-95 border-2 border-transparent">
                                     Ambil Foto
@@ -283,19 +273,10 @@
 
                         <!-- Camera Actions Out -->
                         <div class="flex flex-wrap items-center justify-between gap-2">
-                            <input type="file" id="directCaptureOut" accept="image/*" capture="user" class="hidden" 
-                                onchange="handleDirectCapture(this, 'previewCheckOut', 'placeholderCheckOut', 'photoInputOut', 'btnSubmitOut', 'videoCheckOut', 'guideCheckOut')">
-                            
-                            <button type="button" onclick="document.getElementById('directCaptureOut').click()" 
-                                class="px-4 py-2 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-700 hover:to-purple-700 text-white rounded-xl text-xs font-bold shadow-md hover:shadow-lg flex items-center gap-1.5 transition transform active:scale-95">
-                                <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                Buka Kamera HP / Perangkat
-                            </button>
-
                             <div class="flex items-center gap-1.5">
-                                <button type="button" id="btnStartCameraOut" onclick="initCamera('videoCheckOut', 'placeholderCheckOut', 'guideCheckOut', 'previewCheckOut', 'directCaptureOut')" class="btn-colorful px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 active:scale-95 border-2 border-transparent">
+                                <button type="button" id="btnStartCameraOut" onclick="initCamera('videoCheckOut', 'placeholderCheckOut', 'guideCheckOut', 'previewCheckOut', 'photoInputOut', 'btnSubmitOut')" class="btn-colorful px-3.5 py-2 bg-gradient-to-r from-purple-600 to-indigo-700 hover:from-purple-700 hover:to-indigo-800 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 active:scale-95 border-2 border-transparent">
                                     <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                    Live Stream
+                                    Aktifkan Kamera
                                 </button>
                                 <button type="button" id="btnCaptureOut" onclick="takeSnapshot('videoCheckOut', 'canvasCheckOut', 'previewCheckOut', 'photoInputOut', 'btnSubmitOut', 'guideCheckOut')" class="btn-colorful px-4 py-2 bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white text-xs font-bold rounded-xl shadow-md flex items-center gap-1.5 transition transform active:scale-95 border-2 border-transparent">
                                     Ambil Foto
@@ -623,8 +604,8 @@
             }
         });
 
-        // Camera WebRTC helper with automatic fallback
-        async function initCamera(videoId, placeholderId, guideId, previewId, directInputId) {
+        // Aktifkan kamera langsung dari browser
+        async function initCamera(videoId, placeholderId, guideId, previewId, inputId, submitBtnId) {
             const video = document.getElementById(videoId);
             const placeholder = document.getElementById(placeholderId);
             const guide = document.getElementById(guideId);
@@ -632,8 +613,7 @@
 
             // Periksa ketersediaan MediaDevices (HTTPS / Localhost constraint)
             if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-                alert("Browser membatasi streaming WebRTC pada koneksi non-HTTPS. Sistem otomatis membuka kamera perangkat Anda langsung.");
-                document.getElementById(directInputId).click();
+                alert("Kamera memerlukan koneksi HTTPS di HP. Buka aplikasi melalui alamat HTTPS.");
                 return;
             }
 
@@ -659,71 +639,12 @@
                 if (placeholder) placeholder.classList.add('hidden');
                 if (guide) guide.classList.remove('hidden');
                 if (preview) preview.classList.add('hidden');
+                document.getElementById(inputId).value = "";
+                document.getElementById(submitBtnId).disabled = true;
             } catch (err) {
                 console.error("Camera error:", err);
-                alert("Tidak dapat mengakses streaming webcam (" + err.message + "). Membuka kamera langsung dari perangkat Anda...");
-                document.getElementById(directInputId).click();
+                alert("Kamera tidak dapat dibuka. Periksa izin kamera di browser.");
             }
-        }
-
-        // Direct Native Camera / File Input Capture
-        function handleDirectCapture(fileInput, previewId, placeholderId, hiddenInputId, submitBtnId, videoId, guideId) {
-            if (!fileInput.files || !fileInput.files[0]) return;
-
-            const file = fileInput.files[0];
-            const reader = new FileReader();
-
-            reader.onload = function(e) {
-                const img = new Image();
-                img.onload = function() {
-                    // Kompresi ke canvas agar ukuran tidak melebihi memory
-                    const canvas = document.createElement('canvas');
-                    let width = img.width;
-                    let height = img.height;
-                    const maxDim = 800;
-
-                    if (width > height && width > maxDim) {
-                        height = Math.round(height * (maxDim / width));
-                        width = maxDim;
-                    } else if (height > maxDim) {
-                        width = Math.round(width * (maxDim / height));
-                        height = maxDim;
-                    }
-
-                    canvas.width = width;
-                    canvas.height = height;
-                    const ctx = canvas.getContext('2d');
-                    ctx.drawImage(img, 0, 0, width, height);
-
-                    const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
-
-                    // Set ke input hidden dan preview
-                    document.getElementById(hiddenInputId).value = dataUrl;
-                    const preview = document.getElementById(previewId);
-                    preview.src = dataUrl;
-                    preview.classList.remove('hidden');
-
-                    const video = document.getElementById(videoId);
-                    if (video) video.classList.add('hidden');
-                    const placeholder = document.getElementById(placeholderId);
-                    if (placeholder) placeholder.classList.add('hidden');
-                    const guide = document.getElementById(guideId);
-                    if (guide) guide.classList.add('hidden');
-
-                    if (submitBtnId) {
-                        const submitBtn = document.getElementById(submitBtnId);
-                        if (submitBtn) submitBtn.disabled = false;
-                    }
-
-                    // Hentikan stream kamera jika sedang berjalan
-                    if (currentStream) {
-                        currentStream.getTracks().forEach(track => track.stop());
-                    }
-                };
-                img.src = e.target.result;
-            };
-
-            reader.readAsDataURL(file);
         }
 
         // Take Snapshot Face Photo from WebRTC Stream
@@ -734,8 +655,8 @@
             const input = document.getElementById(inputId);
             const guide = document.getElementById(guideId);
 
-            if (!video.srcObject) {
-                alert("Silakan nyalakan live stream kamera terlebih dahulu atau gunakan tombol 'Buka Kamera HP / Perangkat'!");
+            if (!video.srcObject?.active || !video.videoWidth) {
+                alert("Aktifkan kamera dan tunggu hingga gambar tampil sebelum mengambil foto.");
                 return;
             }
 
@@ -749,6 +670,9 @@
             preview.src = dataUrl;
             preview.classList.remove('hidden');
             video.classList.add('hidden');
+            currentStream.getTracks().forEach(track => track.stop());
+            currentStream = null;
+            video.srcObject = null;
             if (guide) guide.classList.add('hidden');
 
             if (submitBtnId) {

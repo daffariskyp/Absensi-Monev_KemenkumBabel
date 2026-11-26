@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $title }}</title>
+    <title>{{ $title }} | {{ config('app.name') }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('kemenkum.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
@@ -42,7 +43,7 @@
                 <div>
                     <h2 class="text-xs uppercase font-extrabold tracking-widest text-gray-600">KEMENTERIAN HUKUM REPUBLIK INDONESIA</h2>
                     <h1 class="text-base font-extrabold uppercase text-gray-900 tracking-wide">{{ $office->office_name ?? 'KANTOR WILAYAH KEPULAUAN BANGKA BELITUNG' }}</h1>
-                    <p class="text-[11px] text-gray-600 mt-0.5">Sistem Informasi Manajemen Presensi & Kepegawaian Tenaga Non-ASN</p>
+                    <p class="text-[11px] font-semibold text-gray-600 mt-0.5">{{ config('app.name') }}</p>
                 </div>
             </div>
             <div class="text-right">
@@ -61,7 +62,7 @@
         </div>
 
         <p class="text-xs text-gray-700 leading-relaxed mb-4">
-            Berdasarkan permohonan yang diajukan melalui Sistem Monitoring Kepegawaian Non-ASN, dengan ini pimpinan memberikan persetujuan izin/cuti kepada pegawai di bawah ini:
+            Berdasarkan permohonan yang diajukan melalui {{ config('app.name') }}, dengan ini pimpinan memberikan persetujuan izin/cuti kepada pegawai di bawah ini:
         </p>
 
         <!-- DATA PEGAWAI -->

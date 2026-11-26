@@ -73,7 +73,7 @@
                     Employee</label>
 
                 {{-- @dd($projectEmployee->employee->role->name); --}}
-                @if ($isEmployee && $projectEmployee->employee->role->name != 'Project Director')
+                                @if ($isEmployee && $projectEmployee->employee->role?->name != 'Project Director')
                     <!-- Input otomatis jika user adalah employee -->
                     {{-- @dd($projectEmployee); --}}
                     <input type="hidden" name="assigned_project_employee_id" value="{{ $projectEmployee->id }}">

@@ -1,15 +1,16 @@
 <!doctype html>
-<html>
+<html lang="id">
 
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ config('app.name') }}</title>
     @vite('resources/css/app.css')
 </head>
 
 <body>
     <h1 class="text-3xl font-bold underline">
-        Hello world!
+        {{ config('app.name') }}
     </h1>
 </body>
 

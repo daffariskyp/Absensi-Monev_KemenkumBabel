@@ -16,7 +16,9 @@ return [
     |
     */
 
-    'name' => env('APP_NAME', 'Laravel'),
+    'name' => env('APP_NAME', 'SIMON-KUMBABEL'),
+
+    'brand_description' => 'Sistem Informasi Monitoring Aktivitas dan Kehadiran Pegawai Non-ASN Kanwil Kemenkum Babel',
 
     /*
     |--------------------------------------------------------------------------

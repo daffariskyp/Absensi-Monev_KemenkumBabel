@@ -85,8 +85,8 @@ class TaskController extends Controller
         $isToday = trim($date) === now()->toDateString();
 
         $isAppAdmin = !$user->employee;
-        $isProjectAdmin = $user->employee && $user->employee->role->name === 'Project Director';
-        $isTeamLeader = $user->employee && $user->employee->id === $user->employee->role->leader_id;
+        $isProjectAdmin = $user->employee?->role?->name === 'Project Director';
+        $isTeamLeader = $user->employee && $user->employee->id === $user->employee->role?->leader_id;
 
         $query = Project::query();
 
@@ -215,7 +215,7 @@ class TaskController extends Controller
     {
         $user = auth()->user();
         $isAdmin = !$user->employee;
-        $isTeamLeader = $user->employee && $user->employee->id === $user->employee->role->leader_id;
+        $isTeamLeader = $user->employee && $user->employee->id === $user->employee->role?->leader_id;
 
         // Base query
         $tasksQuery = Task::with(['project', 'taskStatus', 'taskLevel', 'assignedProjectEmployee'])->whereHas('project', function ($q) {

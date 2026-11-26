@@ -30,19 +30,19 @@ class DashboardController extends Controller
         }
 
         $today = Carbon::today()->toDateString();
-        $office = OfficeSetting::getActive();
+        $statsOnly = $request->expectsJson();
 
         // Ambil semua pegawai Non-ASN
-        $employees = Employee::with(['user', 'role'])->get();
+        $employees = $statsOnly ? Employee::get(['user_id']) : Employee::with(['user', 'role'])->get();
 
         // Ambil data absensi hari ini
-        $attendancesToday = Attendance::with(['user.employee.role'])
+        $attendancesToday = Attendance::query()->when(!$statsOnly, fn ($query) => $query->with('user.employee.role'))
             ->whereDate('date', $today)
             ->get()
             ->keyBy('user_id');
 
         // Ambil data izin/cuti yang disetujui dan aktif hari ini
-        $leavesToday = Administration::with(['user.employee.role'])
+        $leavesToday = Administration::query()->when(!$statsOnly, fn ($query) => $query->with('user.employee.role'))
             ->where('status', 'approved')
             ->whereDate('start_date', '<=', $today)
             ->whereDate('end_date', '>=', $today)
@@ -50,10 +50,9 @@ class DashboardController extends Controller
             ->keyBy('user_id');
 
         // Ambil semua aktivitas monev hari ini dikelompokkan per user
-        $allMonevActivitiesToday = MonevActivity::with(['user.employee.role'])
-            ->whereDate('date', $today)
-            ->orderBy('time', 'desc')
-            ->get();
+        $monevQuery = MonevActivity::whereDate('date', $today);
+        $allMonevActivitiesToday = $statsOnly ? collect() : $monevQuery->with('user.employee.role')
+            ->orderByDesc('time')->get();
 
         $monevActivitiesToday = $allMonevActivitiesToday->groupBy('user_id');
 
@@ -135,13 +134,6 @@ class DashboardController extends Controller
             }
         }
 
-        // Ambil data pengajuan cuti/izin yang masih pending (menunggu persetujuan admin)
-        $pendingLeaves = Administration::with(['user.employee.role'])
-            ->where('status', 'pending')
-            ->latest()
-            ->get();
-        $pendingLeavesCount = $pendingLeaves->count();
-
         // Statistik
         $stats = [
             'total_karyawan' => $employees->count(),
@@ -151,16 +143,19 @@ class DashboardController extends Controller
             'total_sakit' => count($listSakit),
             'total_izin' => count($listIzin),
             'total_tanpa_keterangan' => count($listTanpaKeterangan),
-            'total_monev_kegiatan' => $allMonevActivitiesToday->count(),
-            'total_pending_cuti' => $pendingLeavesCount,
+            'total_monev_kegiatan' => $statsOnly ? $monevQuery->count() : $allMonevActivitiesToday->count(),
         ];
+
+        if ($statsOnly) {
+            return response()->json($stats)->header('Cache-Control', 'no-store');
+        }
 
         return view('dashboard', [
             'title' => 'Dashboard Monitoring Aktivitas Pegawai Non-ASN',
             'active' => 'dashboard',
             'today' => Carbon::now()->locale('id')->translatedFormat('l, d F Y'),
             'todayDate' => $today,
-            'office' => $office,
+            'office' => OfficeSetting::getActive(),
             'stats' => $stats,
             'listMasuk' => $listMasuk,
             'listTepatWaktu' => $listTepatWaktu,
@@ -169,8 +164,6 @@ class DashboardController extends Controller
             'listIzin' => $listIzin,
             'listTanpaKeterangan' => $listTanpaKeterangan,
             'allMonevActivitiesToday' => $allMonevActivitiesToday,
-            'pendingLeavesCount' => $pendingLeavesCount,
-            'pendingLeavesList' => $pendingLeaves,
         ]);
     }
 

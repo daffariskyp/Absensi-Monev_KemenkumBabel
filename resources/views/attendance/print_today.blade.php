@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $title }}</title>
+    <title>{{ $title }} | {{ config('app.name') }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('kemenkum.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
@@ -25,6 +26,7 @@
     <div class="border-b-2 border-gray-900 pb-4 mb-6 text-center">
         <h2 class="text-xl font-bold tracking-wide uppercase">PEMERINTAH REPUBLIK INDONESIA</h2>
         <h3 class="text-lg font-bold tracking-wider uppercase">LAPORAN AKTIVITAS & PRESENSI HARIAN TENAGA NON-ASN / PPNPN</h3>
+        <p class="text-xs font-semibold tracking-wide">{{ config('app.name') }}</p>
         <p class="text-sm font-semibold text-gray-700 mt-1">Hari / Tanggal: {{ $todayFormatted }} | Lokasi: {{ $office->office_name }}</p>
     </div>
 

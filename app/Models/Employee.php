@@ -14,6 +14,7 @@ class Employee extends Model
         'role_id',
         'work_email',
         'photo',
+        'bio',
         'nik',
         'status_employee',
         'birth_date',

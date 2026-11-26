@@ -38,6 +38,8 @@ class AdministrationController extends Controller
      */
     public function getPendingCount()
     {
+        abort_unless(in_array(auth()->user()->role, ['admin', 'supervisor'], true), 403);
+
         $pending = Administration::with(['user.employee.role'])
             ->where('status', 'pending')
             ->latest()
@@ -144,6 +146,11 @@ class AdministrationController extends Controller
 
         // ALUR ADMIN & SUPERVISOR: Dashboard Pengajuan Izin, Cuti & Surat Sakit Pegawai
         $query = Administration::with(['user.employee.role', 'approver']);
+
+        $search = trim($request->string('search')->toString());
+        if ($search !== '') {
+            $query->whereHas('user', fn ($userQuery) => $userQuery->where('name', 'like', '%' . $search . '%'));
+        }
 
         if ($request->filled('user_id')) {
             $query->where('user_id', $request->user_id);

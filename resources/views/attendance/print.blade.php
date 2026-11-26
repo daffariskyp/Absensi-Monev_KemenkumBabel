@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ $title }}</title>
+    <title>{{ $title }} | {{ config('app.name') }}</title>
+    <link rel="icon" type="image/png" href="{{ asset('kemenkum.png') }}">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         @media print {
@@ -15,7 +16,8 @@
 </head>
 <body class="bg-white text-gray-900 p-8">
     <div class="no-print mb-6 flex justify-between items-center bg-gray-100 p-4 rounded-lg">
-        <a href="{{ route('attendance.recap') }}" class="text-sm font-semibold text-blue-600 hover:underline">&larr; Kembali ke Rekap</a>
+        <a href="{{ $yearly ? route('dashboard') : route('attendance.recap', ['month' => $month, 'year' => $year, 'user_id' => $selectedUserId, 'status' => $statusFilter]) }}"
+            class="text-sm font-semibold text-blue-600 hover:underline">&larr; {{ $yearly ? 'Kembali ke Dashboard' : 'Kembali ke Rekap' }}</a>
         <button onclick="window.print()" class="px-5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold shadow hover:bg-blue-700">
             Cetak / Simpan PDF
         </button>
@@ -25,8 +27,9 @@
     <div class="border-b-2 border-gray-800 pb-4 mb-6 text-center">
         <h2 class="text-xl font-bold tracking-wide uppercase">PEMERINTAH REPUBLIK INDONESIA</h2>
         <h3 class="text-lg font-bold tracking-wider uppercase">LAPORAN REKAPITULASI PRESENSI & MONITORING EVALUASI (MONEV)</h3>
+        <p class="text-xs font-semibold tracking-wide">{{ config('app.name') }}</p>
         <h4 class="text-sm font-semibold text-gray-700 uppercase">TENAGA NON-ASN / PPNPN TAHUN {{ $year }}</h4>
-        <p class="text-xs text-gray-500 mt-1">Periode Bulan: {{ Carbon\Carbon::create(null, $month, 1)->locale('id')->translatedFormat('F Y') }} | Lokasi: {{ $office->office_name }}</p>
+        <p class="text-xs text-gray-500 mt-1">Periode {{ $monthName }} · {{ $office->office_name }}</p>
     </div>
 
     @if($targetUser)
@@ -42,6 +45,36 @@
         </div>
     @endif
 
+    @if($yearly)
+        @php
+            $attendanceByMonth = $attendances->countBy(fn ($item) => $item->date->month);
+            $activitiesByMonth = $activities->countBy(fn ($item) => $item->date->month);
+        @endphp
+        <h3 class="text-base font-bold mb-2">Ringkasan per bulan</h3>
+        <table class="w-full border-collapse border border-gray-400 text-xs mb-8">
+            <thead class="bg-gray-100 text-left">
+                <tr>
+                    <th scope="col" class="p-2">Bulan</th>
+                    <th scope="col" class="p-2">Catatan kehadiran</th>
+                    <th scope="col" class="p-2">Kegiatan Monev</th>
+                </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+                @foreach(range(1, 12) as $summaryMonth)
+                    <tr>
+                        <td class="p-2">{{ \Carbon\Carbon::create($year, $summaryMonth, 1)->locale('id')->translatedFormat('F') }}</td>
+                        <td class="p-2">{{ $attendanceByMonth->get($summaryMonth, 0) }}</td>
+                        <td class="p-2">{{ $activitiesByMonth->get($summaryMonth, 0) }}</td>
+                    </tr>
+                @endforeach
+            </tbody>
+        </table>
+    @endif
+
+    <h3 class="text-base font-bold mb-2">Catatan kehadiran ({{ $attendances->count() }})</h3>
+    @if($statusFilter)
+        <p class="text-xs mb-2">Status kehadiran: {{ ucfirst($statusFilter) }}</p>
+    @endif
     <table class="w-full border-collapse border border-gray-400 text-xs mb-8">
         <thead>
             <tr class="bg-gray-100 text-center font-bold">
@@ -53,8 +86,8 @@
                 <th class="border border-gray-400 p-2 w-20">Masuk</th>
                 <th class="border border-gray-400 p-2 w-20">Pulang</th>
                 <th class="border border-gray-400 p-2 w-20">Status</th>
-                <th class="border border-gray-400 p-2">Uraian Monev Aktivitas Harian</th>
-                <th class="border border-gray-400 p-2">Kendala (Min 100 Karakter)</th>
+                <th class="border border-gray-400 p-2">Catatan Monev pada absensi</th>
+                <th class="border border-gray-400 p-2">Kendala pada absensi</th>
             </tr>
         </thead>
         <tbody>
@@ -88,6 +121,11 @@
             @endforelse
         </tbody>
     </table>
+
+    <section class="mb-8">
+        <h3 class="text-base font-bold mb-2">Aktivitas Monev ({{ $activities->count() }})</h3>
+        @include('attendance.monthly-activities', ['printView' => true])
+    </section>
 
     <!-- Tanda Tangan Pengesahan dengan QR Code Digital -->
     <div class="grid grid-cols-2 text-xs pt-6 gap-8">

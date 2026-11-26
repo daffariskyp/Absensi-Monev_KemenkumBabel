@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AttendanceController extends Controller
 {
@@ -353,30 +354,18 @@ class AttendanceController extends Controller
      */
     public function recap(Request $request)
     {
-        $user = auth()->user();
-        $month = $request->input('month', Carbon::now()->month);
-        $year = $request->input('year', Carbon::now()->year);
-        $selectedUserId = $request->input('user_id');
-        $statusFilter = $request->input('status');
+        $period = $this->recapPeriod($request);
+        $statsQuery = $this->recapQuery(new Attendance, $period);
+        $query = (clone $statsQuery)->with('user.employee.role');
 
-        $query = Attendance::with(['user.employee.role'])
-            ->whereMonth('date', $month)
-            ->whereYear('date', $year);
-
-        // Admin & Supervisor bisa lihat semua pegawai; role lain hanya bisa lihat milik sendiri
-        if (!in_array($user->role, ['admin', 'supervisor'])) {
-            $query->where('user_id', $user->id);
-        } else {
-            if ($selectedUserId) {
-                $query->where('user_id', $selectedUserId);
-            }
+        if ($period['statusFilter']) {
+            $query->where('status', $period['statusFilter']);
         }
 
-        if ($statusFilter) {
-            $query->where('status', $statusFilter);
-        }
-
-        $attendances = $query->orderBy('date', 'desc')->paginate(15);
+        $attendances = $query->orderByDesc('date')->orderBy('id')->paginate(15);
+        $activities = $this->recapQuery(new MonevActivity, $period)
+            ->with('user.employee.role')->orderByDesc('date')->orderByDesc('time')->orderByDesc('id')
+            ->paginate(15, ['*'], 'activity_page');
 
         // Attach kegiatan monev harian ke setiap baris absensi
         $userIds = $attendances->pluck('user_id')->unique();
@@ -392,16 +381,6 @@ class AttendanceController extends Controller
             $att->daily_monev_activities = $allMonev->get($key, collect());
         }
 
-        $canManageAll = in_array($user->role, ['admin', 'supervisor']);
-
-        // Ringkasan Statistik
-        $statsQuery = Attendance::whereMonth('date', $month)->whereYear('date', $year);
-        if (!$canManageAll) {
-            $statsQuery->where('user_id', $user->id);
-        } elseif ($selectedUserId) {
-            $statsQuery->where('user_id', $selectedUserId);
-        }
-
         $totalRecords = (clone $statsQuery)->count();
         $totalHadir = (clone $statsQuery)->whereIn('status', ['hadir', 'terlambat'])->count();
         $totalTepatWaktu = (clone $statsQuery)->where('check_in_status', 'tepat_waktu')->count();
@@ -409,16 +388,14 @@ class AttendanceController extends Controller
         $totalIzin = (clone $statsQuery)->where('status', 'izin')->count();
         $totalSakit = (clone $statsQuery)->where('status', 'sakit')->count();
 
-        $employees = $canManageAll ? User::with('employee.role')->get() : collect([$user]);
+        $employees = $period['canManageAll'] ? User::with('employee.role')->orderBy('name')->get() : collect();
 
         return view('attendance.recap', [
+            ...$period,
             'title' => 'Rekapan Absensi & Monev Non-ASN',
             'active' => 'attendance_recap',
             'attendances' => $attendances,
-            'month' => $month,
-            'year' => $year,
-            'selectedUserId' => $selectedUserId,
-            'statusFilter' => $statusFilter,
+            'activities' => $activities,
             'employees' => $employees,
             'stats' => [
                 'total' => $totalRecords,
@@ -436,54 +413,71 @@ class AttendanceController extends Controller
      */
     public function printRecap(Request $request)
     {
-        $user = auth()->user();
-        $month = $request->input('month', Carbon::now()->month);
-        $year = $request->input('year', Carbon::now()->year);
-        $selectedUserId = $request->input('user_id');
-
-        $query = Attendance::with(['user.employee.role'])
-            ->whereMonth('date', $month)
-            ->whereYear('date', $year)
-            ->orderBy('date', 'asc');
-
-        $canManageAll = in_array($user->role, ['admin', 'supervisor']);
-
-        if (!$canManageAll) {
-            $query->where('user_id', $user->id);
-            $targetUser = $user;
-        } else {
-            if ($selectedUserId) {
-                $query->where('user_id', $selectedUserId);
-                $targetUser = User::find($selectedUserId);
-            } else {
-                $targetUser = null;
-            }
-        }
-
-        $attendances = $query->get();
+        $period = $this->recapPeriod($request, allowYearly: true);
+        $targetUser = $period['selectedUserId'] ? User::with('employee.role')->find($period['selectedUserId']) : null;
+        $attendances = $this->recapQuery(new Attendance, $period)->with('user')
+            ->when($period['statusFilter'], fn ($query, $status) => $query->where('status', $status))
+            ->orderBy('date')->orderBy('id')->get();
+        $activities = $this->recapQuery(new MonevActivity, $period)->with('user')
+            ->orderBy('date')->orderBy('time')->orderBy('id')->get();
         $office = OfficeSetting::getActive();
 
         // Tanda Tangan QR Code Digital untuk Rekap Absensi
-        $monthName = Carbon::createFromDate($year, $month, 1)->locale('id')->translatedFormat('F Y');
+        $periodLabel = $period['monthName'];
         $qrData = "KEMENTERIAN HUKUM RI\n" .
                   "DOKUMEN RESMI REKAPITULASI ABSENSI PEGAWAI NON-ASN\n" .
-                  "PERIODE: {$monthName}\n" .
+                  "PERIODE: {$periodLabel}\n" .
                   "LOKASI: " . ($office->office_name ?? 'Kantor Wilayah') . "\n" .
-                  "TOTAL REKAP: " . $attendances->count() . " Catatan Kehadiran\n" .
+                  "TOTAL REKAP: " . $attendances->count() . " catatan kehadiran, " . $activities->count() . " kegiatan Monev\n" .
                   "STATUS: TERVERIFIKASI SISTEM ELEKTRONIK\n" .
                   "PENANGGUNG JAWAB: Kasubag Kepegawaian & Tata Usaha\n" .
                   "WAKTU CETAK: " . Carbon::now()->format('d/m/Y H:i') . " WIB";
         $qrSvg = \App\Helpers\QrCodeHelper::generateSvg($qrData, 120);
 
         return view('attendance.print', [
-            'title' => 'Cetak Rekap Absensi Non-ASN',
+            ...$period,
+            'title' => $period['yearly'] ? 'Cetak Rekap Tahunan Kehadiran & Monev' : 'Cetak Rekap Bulanan Kehadiran & Monev',
             'attendances' => $attendances,
+            'activities' => $activities,
             'office' => $office,
-            'month' => $month,
-            'year' => $year,
             'targetUser' => $targetUser,
             'qrSvg' => $qrSvg,
         ]);
+    }
+
+    private function recapPeriod(Request $request, bool $allowYearly = false): array
+    {
+        $validated = $request->validate([
+            'month' => ['nullable', Rule::in($allowYearly ? [...range(1, 12), 'all'] : range(1, 12))],
+            'year' => 'nullable|integer|between:1900,9998',
+            'user_id' => 'nullable|integer|min:1',
+            'status' => 'nullable|in:hadir,terlambat,izin,sakit',
+        ]);
+        $now = Carbon::now();
+        $yearly = ($validated['month'] ?? null) === 'all';
+        $month = $yearly ? null : (int) ($validated['month'] ?? $now->month);
+        $year = (int) ($validated['year'] ?? $now->year);
+        $start = Carbon::create($year, $month ?? 1, 1);
+        $user = $request->user();
+        $canManageAll = in_array($user->role, ['admin', 'supervisor'], true);
+
+        return [
+            'month' => $month,
+            'year' => $year,
+            'yearly' => $yearly,
+            'monthName' => $yearly ? 'Januari–Desember ' . $year : $start->locale('id')->translatedFormat('F Y'),
+            'startDate' => $start->toDateString(),
+            'endDate' => ($yearly ? $start->copy()->endOfYear() : $start->copy()->endOfMonth())->toDateString(),
+            'canManageAll' => $canManageAll,
+            'selectedUserId' => $canManageAll ? ($validated['user_id'] ?? null) : $user->id,
+            'statusFilter' => $validated['status'] ?? null,
+        ];
+    }
+
+    private function recapQuery(Attendance|MonevActivity $model, array $period): \Illuminate\Database\Eloquent\Builder
+    {
+        return $model->newQuery()->whereBetween('date', [$period['startDate'], $period['endDate']])
+            ->when($period['selectedUserId'], fn ($query, $userId) => $query->where('user_id', $userId));
     }
 
     /**

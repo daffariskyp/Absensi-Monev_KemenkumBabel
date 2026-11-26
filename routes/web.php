@@ -38,8 +38,9 @@ Route::middleware('auth')->group(function () {
   Route::resource('setting', SettingController::class);
   Route::resource('calendar', CalendarController::class);
   Route::resource('time-management', TimeManagementController::class);
-  Route::resource('users', UserController::class);
   Route::get('/users/profile', [UserController::class, 'show'])->name('users.profile');
+  Route::put('/users/profile', [UserController::class, 'update'])->name('users.profile.update');
+  Route::resource('users', UserController::class);
 
   // Administration (Pengajuan Izin & Cuti Non-ASN)
   Route::get('/administration/pending-count', [AdministrationController::class, 'getPendingCount'])->name('administration.pendingCount');

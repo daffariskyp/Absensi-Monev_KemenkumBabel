@@ -3,10 +3,6 @@
         <!-- Header Banner -->
         <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white rounded-2xl p-6 shadow-xl mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <div class="inline-flex items-center gap-2 bg-blue-500/25 text-blue-200 text-xs px-3.5 py-1.5 rounded-full font-semibold mb-2.5 backdrop-blur-sm border border-blue-400/30">
-                    <span class="size-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Dashboard Monitoring Aktivitas Pegawai Non-ASN (Satpam, Driver, Kebersihan)
-                </div>
                 <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">Aktivitas & Kehadiran Pegawai Hari Ini</h1>
                 <p class="text-blue-200 text-sm mt-1.5 flex items-center gap-2 flex-wrap">
                     <span>Hari / Tanggal: <strong class="text-white">{{ $today }}</strong></span>
@@ -20,293 +16,88 @@
                     <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Download PDF / Cetak Rekap
+                    Cetak hari ini
                 </a>
             </div>
         </div>
 
-        <!-- Banner Pengajuan Cuti Pending (SweetAlert Triggers & Visual Banner) -->
-        @if(isset($stats['total_pending_cuti']) && $stats['total_pending_cuti'] > 0)
-            <div class="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white rounded-2xl p-4 mb-6 shadow-lg flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 border-2 border-yellow-300 animate-pulse-subtle">
-                <div class="flex items-center gap-3">
-                    <span class="p-2.5 bg-white/20 rounded-xl text-white backdrop-blur-sm">
-                        <svg class="size-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
-                    </span>
-                    <div>
-                        <div class="font-extrabold text-base flex items-center gap-2">
-                            <span>Perhatian Admin: Ada {{ $stats['total_pending_cuti'] }} Pengajuan Cuti / Izin Menunggu Persetujuan!</span>
-                            <span class="px-2 py-0.5 rounded-full text-xs bg-white text-orange-700 font-black">BARU</span>
-                        </div>
-                        <p class="text-amber-100 text-xs mt-0.5">Pegawai Non-ASN telah mengajukan permohonan izin/cuti yang memerlukan tindakan persetujuan atasan.</p>
-                    </div>
-                </div>
-                <div class="flex items-center gap-2">
-                    <a href="{{ route('administration.index', ['status' => 'pending']) }}"
-                        class="btn-colorful px-4 py-2 bg-white text-orange-800 hover:bg-yellow-50 rounded-xl text-xs font-black shadow-md transition flex items-center gap-1.5 border-2 border-yellow-400">
-                        <svg class="size-4 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" /></svg>
-                        Tinjau Pengajuan Sekarang
-                    </a>
-                </div>
+        <form method="GET" action="{{ route('attendance.print') }}" target="_blank"
+            class="dashboard-print-form bg-white border border-blue-200 rounded-xl p-4 mb-6">
+            <h2 class="font-bold text-gray-900">Cetak rekap kehadiran &amp; Monev</h2>
+            <div>
+                <label for="dashboard-print-month">Periode</label>
+                <select id="dashboard-print-month" name="month">
+                    <option value="all">Setahun penuh</option>
+                    @foreach(range(1, 12) as $month)
+                        <option value="{{ $month }}" @selected($month === (int) substr($todayDate, 5, 2))>
+                            {{ \Carbon\Carbon::create(2000, $month, 1)->locale('id')->translatedFormat('F') }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
-        @endif
+            <div>
+                <label for="dashboard-print-year">Tahun</label>
+                <input id="dashboard-print-year" type="number" name="year" min="1900" max="9998"
+                    value="{{ substr($todayDate, 0, 4) }}" required>
+            </div>
+            <button type="submit" class="app-action">Buka laporan cetak</button>
+        </form>
 
-        <!-- Metric Stat Cards (Total Pegawai dengan Fitur Filter Langsung) -->
-        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 mb-6">
-            <!-- 1. Total Pegawai (Interaktif Filter: Masuk, Telat, Sakit, Alpha, Izin) -->
-            <div class="bg-gradient-to-br from-white to-blue-50/50 border-2 border-blue-300 hover:border-blue-500 rounded-2xl p-4 shadow-sm hover:shadow-md transition">
-                <div class="flex items-center justify-between text-blue-900 text-xs font-extrabold uppercase tracking-wider">
-                    <span>Total Pegawai</span>
-                    <span class="p-1.5 rounded-xl bg-blue-100 text-blue-700">
-                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                    </span>
+        <figure class="attendance-chart" data-attendance-chart data-url="{{ route('dashboard') }}">
+            <figcaption class="attendance-chart-heading">
+                <div>
+                    <h2>Status kehadiran hari ini</h2>
+                    <p data-chart-status>Pembaruan otomatis setiap 30 detik</p>
                 </div>
-                <div class="text-2xl font-black text-gray-900 mt-2">{{ $stats['total_karyawan'] }} <span class="text-xs font-semibold text-gray-500">Orang</span></div>
-                
-                <!-- Quick Filter Badges di dalam kartu Total Pegawai -->
-                <div class="mt-2 pt-2 border-t border-blue-100 flex flex-col gap-1">
-                    <span class="text-[10px] font-bold text-gray-500 uppercase">Filter Cepat:</span>
-                    <div class="flex flex-wrap gap-1">
-                        <button type="button" onclick="filterPegawaiInline('masuk')"
-                            class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 hover:bg-emerald-200 border border-emerald-300 transition flex items-center gap-1"
-                            title="Filter siapa yang masuk hari ini">
-                            <span class="size-1.5 rounded-full bg-emerald-500"></span> Masuk: {{ $stats['total_masuk'] }}
-                        </button>
-                        <button type="button" onclick="filterPegawaiInline('telat')"
-                            class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 hover:bg-amber-200 border border-amber-300 transition flex items-center gap-1"
-                            title="Filter siapa yang telat hari ini">
-                            <span class="size-1.5 rounded-full bg-amber-500"></span> Telat: {{ $stats['total_telat'] }}
-                        </button>
-                        <button type="button" onclick="filterPegawaiInline('sakit')"
-                            class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-pink-100 text-pink-800 hover:bg-pink-200 border border-pink-300 transition flex items-center gap-1"
-                            title="Filter siapa yang sakit hari ini">
-                            <span class="size-1.5 rounded-full bg-pink-500"></span> Sakit: {{ $stats['total_sakit'] }}
-                        </button>
-                        <button type="button" onclick="filterPegawaiInline('alpha')"
-                            class="px-1.5 py-0.5 rounded-md text-[10px] font-bold bg-rose-100 text-rose-800 hover:bg-rose-200 border border-rose-300 transition flex items-center gap-1"
-                            title="Filter siapa yang tidak ada keterangan">
-                            <span class="size-1.5 rounded-full bg-rose-500"></span> Alpha: {{ $stats['total_tanpa_keterangan'] }}
-                        </button>
-                    </div>
+                <div class="attendance-chart-totals">
+                    <span><strong data-chart-value="total_karyawan">{{ $stats['total_karyawan'] }}</strong> pegawai</span>
+                    <span><strong data-chart-value="total_monev_kegiatan">{{ $stats['total_monev_kegiatan'] }}</strong> kegiatan Monev</span>
                 </div>
-            </div>
+            </figcaption>
+            @foreach([
+                'total_tepat_waktu' => 'Tepat waktu',
+                'total_telat' => 'Terlambat',
+                'total_sakit' => 'Sakit',
+                'total_izin' => 'Izin atau cuti',
+                'total_tanpa_keterangan' => 'Tanpa keterangan',
+            ] as $key => $label)
+                <div class="attendance-chart-row">
+                    <span id="chart-{{ $key }}">{{ $label }}</span>
+                    <meter aria-labelledby="chart-{{ $key }}" data-chart-meter="{{ $key }}"
+                        min="0" max="{{ max(1, $stats['total_karyawan']) }}" value="{{ $stats[$key] }}"></meter>
+                    <strong data-chart-value="{{ $key }}">{{ $stats[$key] }}</strong>
+                </div>
+            @endforeach
+        </figure>
 
-            <!-- 2. Masuk / Hadir (Total yang Hadir Hari Ini) -->
-            <div class="bg-gradient-to-br from-white to-emerald-50/50 border-2 border-emerald-300 hover:border-emerald-500 rounded-2xl p-4 shadow-sm hover:shadow-md transition cursor-pointer" onclick="filterPegawaiInline('masuk')">
-                <div class="flex items-center justify-between text-emerald-800 text-xs font-extrabold uppercase tracking-wider">
-                    <span>Masuk (Hadir)</span>
-                    <span class="p-1.5 rounded-xl bg-emerald-100 text-emerald-700">
-                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </span>
-                </div>
-                <div class="text-2xl font-black text-emerald-700 mt-2">{{ $stats['total_masuk'] }} <span class="text-xs font-semibold text-emerald-600">Pegawai</span></div>
-                <div class="text-[11px] text-emerald-600 mt-1 font-medium flex items-center gap-1">
-                    <span class="size-2 rounded-full bg-emerald-500"></span> {{ $stats['total_tepat_waktu'] }} Tepat Waktu
-                </div>
-            </div>
-
-            <!-- 3. Terlambat / Telat -->
-            <div class="bg-gradient-to-br from-white to-amber-50/50 border-2 border-amber-300 hover:border-amber-500 rounded-2xl p-4 shadow-sm hover:shadow-md transition cursor-pointer" onclick="filterPegawaiInline('telat')">
-                <div class="flex items-center justify-between text-amber-800 text-xs font-extrabold uppercase tracking-wider">
-                    <span>Terlambat (Telat)</span>
-                    <span class="p-1.5 rounded-xl bg-amber-100 text-amber-700">
-                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </span>
-                </div>
-                <div class="text-2xl font-black text-amber-700 mt-2">{{ $stats['total_telat'] }} <span class="text-xs font-semibold text-amber-600">Pegawai</span></div>
-                <div class="text-[11px] text-amber-600 mt-1 font-medium flex items-center gap-1">
-                    <span class="size-2 rounded-full bg-amber-500"></span> Absen Masuk Lewat Jam
-                </div>
-            </div>
-
-            <!-- 4. Sakit (Surat Dokter) -->
-            <div class="bg-gradient-to-br from-white to-pink-50/50 border-2 border-pink-300 hover:border-pink-500 rounded-2xl p-4 shadow-sm hover:shadow-md transition cursor-pointer" onclick="filterPegawaiInline('sakit')">
-                <div class="flex items-center justify-between text-pink-800 text-xs font-extrabold uppercase tracking-wider">
-                    <span>Sakit (Dokter)</span>
-                    <span class="p-1.5 rounded-xl bg-pink-100 text-pink-700">
-                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
-                    </span>
-                </div>
-                <div class="text-2xl font-black text-pink-700 mt-2">{{ $stats['total_sakit'] }} <span class="text-xs font-semibold text-pink-600">Pegawai</span></div>
-                <div class="text-[11px] text-pink-600 mt-1 font-medium flex items-center gap-1">
-                    <span class="size-2 rounded-full bg-pink-500"></span> Surat Dokter Resmi
-                </div>
-            </div>
-
-            <!-- 5. Izin & Cuti -->
-            <div class="bg-gradient-to-br from-white to-purple-50/50 border-2 border-purple-300 hover:border-purple-500 rounded-2xl p-4 shadow-sm hover:shadow-md transition cursor-pointer" onclick="filterPegawaiInline('izin')">
-                <div class="flex items-center justify-between text-purple-800 text-xs font-extrabold uppercase tracking-wider">
-                    <span>Izin & Cuti</span>
-                    <span class="p-1.5 rounded-xl bg-purple-100 text-purple-700">
-                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    </span>
-                </div>
-                <div class="text-2xl font-black text-purple-700 mt-2">{{ $stats['total_izin'] }} <span class="text-xs font-semibold text-purple-600">Pegawai</span></div>
-                <div class="text-[11px] text-purple-600 mt-1 font-medium flex items-center gap-1">
-                    <span class="size-2 rounded-full bg-purple-500"></span> Disetujui Atasan
-                </div>
-            </div>
-
-            <!-- 6. Tanpa Keterangan / Alpha -->
-            <div class="bg-gradient-to-br from-white to-rose-50/50 border-2 border-rose-300 hover:border-rose-500 rounded-2xl p-4 shadow-sm hover:shadow-md transition cursor-pointer" onclick="filterPegawaiInline('alpha')">
-                <div class="flex items-center justify-between text-rose-800 text-xs font-extrabold uppercase tracking-wider">
-                    <span>Tanpa Keterangan</span>
-                    <span class="p-1.5 rounded-xl bg-rose-100 text-rose-700">
-                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    </span>
-                </div>
-                <div class="text-2xl font-black text-rose-700 mt-2">{{ $stats['total_tanpa_keterangan'] }} <span class="text-xs font-semibold text-rose-600">Pegawai</span></div>
-                <div class="text-[11px] text-rose-600 mt-1 font-medium flex items-center gap-1">
-                    <span class="size-2 rounded-full bg-rose-500"></span> Belum Presensi / Alpha
-                </div>
-            </div>
-
-            <!-- 7. Monev Kegiatan -->
-            <div class="bg-gradient-to-br from-white to-indigo-50/50 border-2 border-indigo-300 hover:border-indigo-500 rounded-2xl p-4 shadow-sm hover:shadow-md transition cursor-pointer" onclick="switchTab('tab-monev')">
-                <div class="flex items-center justify-between text-indigo-800 text-xs font-extrabold uppercase tracking-wider">
-                    <span>Kegiatan Monev</span>
-                    <span class="p-1.5 rounded-xl bg-indigo-100 text-indigo-700">
-                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
-                    </span>
-                </div>
-                <div class="text-2xl font-black text-indigo-700 mt-2">{{ $stats['total_monev_kegiatan'] }} <span class="text-xs font-semibold text-indigo-600">Tugas</span></div>
-                <div class="text-[11px] text-indigo-600 mt-1 font-medium flex items-center gap-1">
-                    <span class="size-2 rounded-full bg-indigo-500"></span> Laporan Lapangan
-                </div>
-            </div>
+        <div class="dashboard-tabs" aria-label="Filter status pegawai" role="group">
+            @foreach([
+                'semua' => 'Semua pegawai',
+                'masuk' => 'Hadir',
+                'telat' => 'Terlambat',
+                'sakit' => 'Sakit',
+                'izin' => 'Izin / cuti',
+                'alpha' => 'Tanpa keterangan',
+                'monev' => 'Kegiatan Monev',
+            ] as $tab => $label)
+                <button type="button" onclick="switchTab('tab-{{ $tab }}')" data-dashboard-tab
+                    aria-controls="tab-{{ $tab }}" aria-pressed="{{ $tab === 'semua' ? 'true' : 'false' }}">
+                    {{ $label }}
+                </button>
+            @endforeach
         </div>
 
-        <!-- Filter Tab Buttons: Berwarna Cerah & Menarik (Biru dengan Border Kuning saat Aktif / Diklik) -->
-        <div class="bg-white border-2 border-gray-200 rounded-2xl p-2.5 shadow-sm mb-6 flex flex-wrap gap-2 items-center">
-            <!-- Tab Semua Pegawai -->
-            <button type="button" onclick="switchTab('tab-semua'); filterPegawaiTable('all');" id="btn-tab-semua"
-                class="tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 transition flex items-center gap-2">
-                <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 10h16M4 14h16M4 18h16" /></svg>
-                <span>Semua Pegawai</span>
-                <span class="px-2 py-0.5 rounded-full text-[11px] bg-blue-200 text-blue-900 font-extrabold">{{ $stats['total_karyawan'] }}</span>
-            </button>
-
-            <!-- Tab Masuk (Hadir) -->
-            <button type="button" onclick="switchTab('tab-masuk')" id="btn-tab-masuk"
-                class="tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-300 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-emerald-500"></span>
-                <span>Masuk (Hadir)</span>
-                <span class="px-2 py-0.5 rounded-full text-[11px] bg-emerald-200 text-emerald-900 font-extrabold">{{ $stats['total_masuk'] }}</span>
-            </button>
-
-            <!-- Tab Terlambat / Telat (Spesifik) -->
-            <button type="button" onclick="switchTab('tab-telat')" id="btn-tab-telat"
-                class="tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-300 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-amber-500"></span>
-                <span>Terlambat (Telat)</span>
-                <span class="px-2 py-0.5 rounded-full text-[11px] bg-amber-200 text-amber-900 font-extrabold">{{ $stats['total_telat'] }}</span>
-            </button>
-
-            <!-- Tab Sakit (Surat Dokter) -->
-            <button type="button" onclick="switchTab('tab-sakit')" id="btn-tab-sakit"
-                class="tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-pink-50 text-pink-800 hover:bg-pink-100 border-2 border-pink-300 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-pink-500"></span>
-                <span>Sakit (Dokter)</span>
-                <span class="px-2 py-0.5 rounded-full text-[11px] bg-pink-200 text-pink-900 font-extrabold">{{ $stats['total_sakit'] }}</span>
-            </button>
-
-            <!-- Tab Izin & Cuti -->
-            <button type="button" onclick="switchTab('tab-izin')" id="btn-tab-izin"
-                class="tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-purple-50 text-purple-800 hover:bg-purple-100 border-2 border-purple-300 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-purple-500"></span>
-                <span>Izin & Cuti</span>
-                <span class="px-2 py-0.5 rounded-full text-[11px] bg-purple-200 text-purple-900 font-extrabold">{{ $stats['total_izin'] }}</span>
-            </button>
-
-            <!-- Tab Tanpa Keterangan (Alpha) -->
-            <button type="button" onclick="switchTab('tab-alpha')" id="btn-tab-alpha"
-                class="tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-rose-50 text-rose-800 hover:bg-rose-100 border-2 border-rose-300 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-rose-500"></span>
-                <span>Tanpa Keterangan (Alpha)</span>
-                <span class="px-2 py-0.5 rounded-full text-[11px] bg-rose-200 text-rose-900 font-extrabold">{{ $stats['total_tanpa_keterangan'] }}</span>
-            </button>
-
-            <!-- Tab Laporan Monev -->
-            <button type="button" onclick="switchTab('tab-monev')" id="btn-tab-monev"
-                class="tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border-2 border-indigo-300 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-indigo-500 animate-pulse"></span>
-                <span>Laporan Monev</span>
-                <span class="px-2 py-0.5 rounded-full text-[11px] bg-indigo-200 text-indigo-900 font-extrabold">{{ $stats['total_monev_kegiatan'] }}</span>
-            </button>
-        </div>
-
-        <!-- ========================================================================= -->
-        <!-- Tab 1: Semua Pegawai (Dengan In-Table Filtering: Telat, Masuk, Sakit, Alpha, Izin) -->
-        <!-- ========================================================================= -->
         <div id="tab-semua" class="tab-pane block">
             <div class="bg-white border-2 border-gray-200 rounded-2xl shadow-sm overflow-hidden">
-                <!-- Bar Filter & Pencarian Pegawai -->
-                <div class="p-4 border-b bg-gray-50">
-                    <div class="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-3">
-                        <div class="flex-shrink-0">
-                            <h3 class="font-bold text-gray-900 text-sm flex items-center gap-2">
-                                <span>Status Seluruh Pegawai Non-ASN</span>
-                                <span id="activeFilterBadge" class="text-xs px-2.5 py-0.5 rounded-full bg-blue-100 text-blue-800 font-bold border border-blue-300">Semua Pegawai ({{ $stats['total_karyawan'] }})</span>
-                            </h3>
-                            <p class="text-xs text-gray-500 mt-0.5">Filter instan siapa yang masuk, siapa yang telat, sakit, atau belum ada keterangan.</p>
-                        </div>
-
-                    <!-- Tombol Filter Cepat Berwarna (Bukan Pagination Kotak Abu) -->
-                    <div class="flex flex-wrap items-center gap-2">
-                        <div class="relative">
-                            <input type="text" id="employeeSearchInput" onkeyup="filterPegawaiSearch()" placeholder="Cari nama pegawai..."
-                                class="pl-8 pr-3 py-1.5 text-xs rounded-xl border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white shadow-sm">
-                            <svg class="size-4 text-gray-400 absolute left-2.5 top-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
-                        </div>
-
-                        <!-- Chip Filter Berwarna Permanen -->
-                        <button type="button" onclick="filterPegawaiTable('all')" id="pill-filter-all"
-                            style="background-color: #2563eb; color: #ffffff !important; border: 2px solid #facc15;"
-                            class="pill-btn px-3.5 py-1.5 rounded-xl font-black text-xs shadow-md transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-                            <span class="flex-shrink-0">Semua Pegawai</span>
-                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-white/20 text-white font-extrabold flex-shrink-0">{{ $stats['total_karyawan'] }}</span>
-                        </button>
-                        <button type="button" onclick="filterPegawaiTable('masuk')" id="pill-filter-masuk"
-                            style="background-color: #ecfdf5; color: #065f46; border: 2px solid #a7f3d0;"
-                            class="pill-btn px-3 py-1.5 rounded-xl font-bold text-xs hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-                            <span class="size-2 rounded-full bg-emerald-500 flex-shrink-0"></span>
-                            <span class="flex-shrink-0">Masuk</span>
-                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-emerald-200 text-emerald-950 font-bold flex-shrink-0">{{ $stats['total_masuk'] }}</span>
-                        </button>
-                        <button type="button" onclick="filterPegawaiTable('telat')" id="pill-filter-telat"
-                            style="background-color: #fffbeb; color: #78350f; border: 2px solid #fde68a;"
-                            class="pill-btn px-3 py-1.5 rounded-xl font-bold text-xs hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-                            <span class="size-2 rounded-full bg-amber-500 flex-shrink-0"></span>
-                            <span class="flex-shrink-0">Telat</span>
-                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-amber-200 text-amber-950 font-bold flex-shrink-0">{{ $stats['total_telat'] }}</span>
-                        </button>
-                        <button type="button" onclick="filterPegawaiTable('sakit')" id="pill-filter-sakit"
-                            style="background-color: #fdf2f8; color: #831843; border: 2px solid #fbcfe8;"
-                            class="pill-btn px-3 py-1.5 rounded-xl font-bold text-xs hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-                            <span class="size-2 rounded-full bg-pink-500 flex-shrink-0"></span>
-                            <span class="flex-shrink-0">Sakit</span>
-                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-pink-200 text-pink-950 font-bold flex-shrink-0">{{ $stats['total_sakit'] }}</span>
-                        </button>
-                        <button type="button" onclick="filterPegawaiTable('izin')" id="pill-filter-izin"
-                            style="background-color: #faf5ff; color: #581c87; border: 2px solid #e9d5ff;"
-                            class="pill-btn px-3 py-1.5 rounded-xl font-bold text-xs hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-                            <span class="size-2 rounded-full bg-purple-500 flex-shrink-0"></span>
-                            <span class="flex-shrink-0">Izin / Cuti</span>
-                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-purple-200 text-purple-950 font-bold flex-shrink-0">{{ $stats['total_izin'] }}</span>
-                        </button>
-                        <button type="button" onclick="filterPegawaiTable('alpha')" id="pill-filter-alpha"
-                            style="background-color: #fff1f2; color: #881337; border: 2px solid #fecdd3;"
-                            class="pill-btn px-3 py-1.5 rounded-xl font-bold text-xs hover:opacity-90 transition flex items-center gap-1.5 cursor-pointer whitespace-nowrap">
-                            <span class="size-2 rounded-full bg-rose-500 flex-shrink-0"></span>
-                            <span class="flex-shrink-0">Alpha</span>
-                            <span class="px-1.5 py-0.2 rounded-full text-[10px] bg-rose-200 text-rose-950 font-bold flex-shrink-0">{{ $stats['total_tanpa_keterangan'] }}</span>
-                        </button>
-                    </div>
+                <div class="dashboard-table-heading">
+                    <h3 class="font-bold text-gray-900 text-sm">Daftar pegawai</h3>
+                    <input type="search" id="employeeSearchInput" oninput="filterPegawaiSearch()"
+                        aria-label="Cari nama atau divisi pegawai" placeholder="Cari nama atau divisi"
+                        class="table-filter px-3 py-1.5 text-sm">
                 </div>
 
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm" id="tableSemuaPegawai">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm" id="tableSemuaPegawai">
                         <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold tracking-wider">
                             <tr>
                                 <th class="py-3 px-4">Pegawai</th>
@@ -323,9 +114,8 @@
                             @foreach($listMasuk as $item)
                                 @php
                                     $isTelat = $item['is_late'] ?? ($item['attendance']->check_in_status === 'terlambat');
-                                    $statusCategory = $isTelat ? 'telat' : 'masuk';
                                 @endphp
-                                <tr class="pegawai-row hover:bg-gray-50 transition {{ $isTelat ? 'bg-amber-50/30' : '' }}" data-status="{{ $statusCategory }}" data-is-masuk="true" data-name="{{ strtolower($item['employee']->user->name) }}" data-role="{{ strtolower($item['employee']->role?->name ?? '') }}">
+                                <tr class="pegawai-row hover:bg-gray-50 transition {{ $isTelat ? 'bg-amber-50/30' : '' }}" data-name="{{ mb_strtolower($item['employee']->user?->name ?? '') }}" data-role="{{ mb_strtolower($item['employee']->role?->name ?? '') }}">
                                     <td class="py-3.5 px-4 font-bold text-gray-900">
                                         <div class="flex items-center gap-2">
                                             <span>{{ $item['employee']->user->name }}</span>
@@ -387,7 +177,7 @@
 
                             {{-- Pegawai Sakit (Surat Dokter) --}}
                             @foreach($listSakit as $item)
-                                <tr class="pegawai-row hover:bg-gray-50 transition bg-pink-50/25" data-status="sakit" data-is-masuk="false" data-name="{{ strtolower($item['employee']->user->name) }}" data-role="{{ strtolower($item['employee']->role?->name ?? '') }}">
+                                <tr class="pegawai-row hover:bg-gray-50 transition bg-pink-50/25" data-name="{{ mb_strtolower($item['employee']->user?->name ?? '') }}" data-role="{{ mb_strtolower($item['employee']->role?->name ?? '') }}">
                                     <td class="py-3.5 px-4 font-bold text-gray-900">
                                         <div class="flex items-center gap-2">
                                             <span>{{ $item['employee']->user->name }}</span>
@@ -423,7 +213,7 @@
 
                             {{-- Pegawai Izin & Cuti --}}
                             @foreach($listIzin as $item)
-                                <tr class="pegawai-row hover:bg-gray-50 transition bg-purple-50/25" data-status="izin" data-is-masuk="false" data-name="{{ strtolower($item['employee']->user->name) }}" data-role="{{ strtolower($item['employee']->role?->name ?? '') }}">
+                                <tr class="pegawai-row hover:bg-gray-50 transition bg-purple-50/25" data-name="{{ mb_strtolower($item['employee']->user?->name ?? '') }}" data-role="{{ mb_strtolower($item['employee']->role?->name ?? '') }}">
                                     <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
                                     <td class="py-3.5 px-4">
                                         <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
@@ -454,7 +244,7 @@
 
                             {{-- Pegawai Tanpa Keterangan (Alpha) --}}
                             @foreach($listTanpaKeterangan as $item)
-                                <tr class="pegawai-row hover:bg-gray-50 transition bg-rose-50/20" data-status="alpha" data-is-masuk="false" data-name="{{ strtolower($item['employee']->user->name) }}" data-role="{{ strtolower($item['employee']->role?->name ?? '') }}">
+                                <tr class="pegawai-row hover:bg-gray-50 transition bg-rose-50/20" data-name="{{ mb_strtolower($item['employee']->user?->name ?? '') }}" data-role="{{ mb_strtolower($item['employee']->role?->name ?? '') }}">
                                     <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
                                     <td class="py-3.5 px-4">
                                         <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
@@ -487,10 +277,9 @@
                                 <td colspan="7" class="py-12 text-center">
                                     <div class="max-w-md mx-auto bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm">
                                         <svg class="size-10 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
-                                        <p id="noRowsText" class="text-xs font-bold text-gray-700">Tidak ada data pegawai yang sesuai dengan filter ini.</p>
-                                        <p class="text-[11px] text-gray-500 mt-1">Seluruh pegawai lainnya tercatat pada kategori presensi lain hari ini.</p>
-                                        <button type="button" onclick="filterPegawaiTable('all')" class="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white border-2 border-yellow-300 shadow transition inline-flex items-center gap-1.5 cursor-pointer">
-                                            Tampilkan Semua Pegawai
+                                        <p id="noRowsText" class="text-xs font-bold text-gray-700">Tidak ada pegawai yang cocok dengan pencarian.</p>
+                                        <button type="button" onclick="resetPegawaiSearch()" class="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white border-2 border-yellow-300 shadow transition inline-flex items-center gap-1.5 cursor-pointer">
+                                            Hapus pencarian
                                         </button>
                                     </div>
                                 </td>
@@ -521,7 +310,7 @@
                     </span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
                         <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
                             <tr>
                                 <th class="py-3 px-4">Pegawai</th>
@@ -596,7 +385,7 @@
                     </span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
                         <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
                             <tr>
                                 <th class="py-3 px-4">Pegawai</th>
@@ -675,7 +464,7 @@
                     </span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
                         <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
                             <tr>
                                 <th class="py-3 px-4">Pegawai</th>
@@ -740,7 +529,7 @@
                     </span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
                         <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
                             <tr>
                                 <th class="py-3 px-4">Pegawai</th>
@@ -798,7 +587,7 @@
                     </span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
                         <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
                             <tr>
                                 <th class="py-3 px-4">Pegawai</th>
@@ -966,212 +755,33 @@
     </div>
 
     <script>
-        // SweetAlert ketika ada pengajuan cuti baru bagi Admin
-        document.addEventListener('DOMContentLoaded', function() {
-            @if(isset($stats['total_pending_cuti']) && $stats['total_pending_cuti'] > 0)
-                if (typeof Swal !== 'undefined') {
-                    Swal.fire({
-                        icon: 'warning',
-                        title: '<span style="color:#1e3a8a; font-weight:800;">Pengajuan Cuti Menunggu Persetujuan!</span>',
-                        html: `
-                            <div style="text-align: left; font-size: 13px; color: #374151; line-height: 1.6;">
-                                <p style="margin-bottom: 8px;">Terdapat <b style="color: #2563eb; font-size: 16px;">{{ $stats['total_pending_cuti'] }}</b> pengajuan cuti/izin pegawai Non-ASN baru yang belum diproses oleh atasan.</p>
-                                <div style="background: #eff6ff; padding: 10px 14px; border-radius: 12px; border: 1px solid #bfdbfe; margin-top: 10px;">
-                                    <div style="font-weight: 700; color: #1e40af; font-size: 12px; text-transform: uppercase;">Perhatian:</div>
-                                    <div style="color: #1f2937; margin-top: 2px;">Silakan tinjau dan berikan persetujuan atau penolakan pada dashboard administrasi.</div>
-                                </div>
-                            </div>
-                        `,
-                        showCancelButton: true,
-                        confirmButtonText: 'Tinjau Pengajuan Sekarang',
-                        cancelButtonText: 'Nanti Saja',
-                        confirmButtonColor: '#2563eb',
-                        cancelButtonColor: '#64748b',
-                        customClass: {
-                            popup: 'rounded-2xl shadow-2xl border border-blue-100',
-                            confirmButton: 'px-5 py-2.5 rounded-xl font-bold border-2 border-yellow-400 shadow-md text-white transition active:scale-95',
-                            cancelButton: 'px-4 py-2.5 rounded-xl font-semibold transition active:scale-95'
-                        }
-                    }).then((result) => {
-                        if (result.isConfirmed) {
-                            window.location.href = "{{ route('administration.index', ['status' => 'pending']) }}";
-                        }
-                    });
-                }
-            @endif
-        });
-
-        // Tab Switching Logic dengan Styling Aktif: Biru dengan border agak kuning
         function switchTab(tabId) {
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
-            const targetPane = document.getElementById(tabId);
-            if (targetPane) targetPane.classList.remove('hidden');
-
-            // Reset semua tab buttons ke style berwarna awal
-            const defaultStyles = {
-                'btn-tab-semua': 'tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-blue-50 text-blue-800 hover:bg-blue-100 border-2 border-blue-200 transition flex items-center gap-2',
-                'btn-tab-masuk': 'tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-emerald-50 text-emerald-800 hover:bg-emerald-100 border-2 border-emerald-300 transition flex items-center gap-2',
-                'btn-tab-telat': 'tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-amber-50 text-amber-800 hover:bg-amber-100 border-2 border-amber-300 transition flex items-center gap-2',
-                'btn-tab-sakit': 'tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-pink-50 text-pink-800 hover:bg-pink-100 border-2 border-pink-300 transition flex items-center gap-2',
-                'btn-tab-izin': 'tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-purple-50 text-purple-800 hover:bg-purple-100 border-2 border-purple-300 transition flex items-center gap-2',
-                'btn-tab-alpha': 'tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-rose-50 text-rose-800 hover:bg-rose-100 border-2 border-rose-300 transition flex items-center gap-2',
-                'btn-tab-monev': 'tab-btn px-4 py-2.5 rounded-xl font-bold text-xs bg-indigo-50 text-indigo-800 hover:bg-indigo-100 border-2 border-indigo-300 transition flex items-center gap-2',
-            };
-
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('active-tab');
-                if (defaultStyles[btn.id]) {
-                    btn.className = defaultStyles[btn.id];
-                }
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.toggle('hidden', pane.id !== tabId);
             });
-
-            // Set tab aktif menjadi BIRU dengan BORDER AGAK KUNING
-            const activeBtn = document.getElementById('btn-' + tabId);
-            if (activeBtn) {
-                activeBtn.className = "tab-btn active-tab px-4 py-2.5 rounded-xl font-bold text-xs bg-blue-600 text-white border-2 border-yellow-400 shadow-lg ring-2 ring-yellow-400/30 transition flex items-center gap-2";
-            }
-        }
-
-        // Set default tab aktif saat awal dimuat
-        document.addEventListener('DOMContentLoaded', function() {
-            switchTab('tab-semua');
-        });
-
-        // Filter cepat dari kartu Total Pegawai
-        function filterPegawaiInline(status) {
-            switchTab('tab-semua');
-            filterPegawaiTable(status);
-        }
-
-        // Filter tabel pegawai secara langsung (Client-side)
-        function filterPegawaiTable(status) {
-            currentActiveStatus = status;
-            const rows = document.querySelectorAll('#tableSemuaPegawai .pegawai-row');
-            const searchVal = (document.getElementById('employeeSearchInput')?.value || '').toLowerCase().trim();
-            let visibleCount = 0;
-
-            rows.forEach(row => {
-                const rowStatus = row.getAttribute('data-status');
-                const isMasuk = row.getAttribute('data-is-masuk') === 'true';
-                const rowName = row.getAttribute('data-name') || '';
-                const rowRole = row.getAttribute('data-role') || '';
-
-                let matchesStatus = false;
-                if (status === 'all') {
-                    matchesStatus = true;
-                } else if (status === 'masuk') {
-                    matchesStatus = isMasuk; // SEMUA yang hadir (tepat waktu maupun telat)
-                } else if (status === 'telat') {
-                    matchesStatus = (rowStatus === 'telat');
-                } else if (status === 'sakit') {
-                    matchesStatus = (rowStatus === 'sakit');
-                } else if (status === 'izin') {
-                    matchesStatus = (rowStatus === 'izin');
-                } else if (status === 'alpha') {
-                    matchesStatus = (rowStatus === 'alpha');
-                } else {
-                    matchesStatus = (rowStatus === status);
-                }
-
-                const matchesSearch = !searchVal || rowName.includes(searchVal) || rowRole.includes(searchVal);
-
-                if (matchesStatus && matchesSearch) {
-                    row.style.display = '';
-                    visibleCount++;
-                } else {
-                    row.style.display = 'none';
-                }
+            document.querySelectorAll('[data-dashboard-tab]').forEach(button => {
+                button.setAttribute('aria-pressed', String(button.getAttribute('aria-controls') === tabId));
             });
-
-            const noRowEl = document.getElementById('noRowsFoundSemua');
-            if (noRowEl) {
-                noRowEl.classList.toggle('hidden', visibleCount > 0);
-            }
-
-            // Update badge dan styling tombol filter
-            const badge = document.getElementById('activeFilterBadge');
-            const statusLabels = {
-                'all': 'Semua Pegawai (' + visibleCount + ')',
-                'masuk': 'Pegawai Masuk / Hadir (' + visibleCount + ')',
-                'telat': 'Pegawai Terlambat / Telat (' + visibleCount + ')',
-                'sakit': 'Pegawai Sakit / Surat Dokter (' + visibleCount + ')',
-                'izin': 'Pegawai Izin & Cuti (' + visibleCount + ')',
-                'alpha': 'Pegawai Tanpa Keterangan (' + visibleCount + ')'
-            };
-            if (badge && statusLabels[status]) {
-                badge.innerText = statusLabels[status];
-            }
-
-            // Update styling tombol filter chip: Setiap tombol mempertahankan warnanya masing-masing dengan inline style
-            const pillConfigs = {
-                'all': {
-                    activeBg: '#2563eb',
-                    activeColor: '#ffffff',
-                    activeBorder: '#facc15',
-                    normalBg: '#eff6ff',
-                    normalColor: '#1e40af',
-                    normalBorder: '#bfdbfe',
-                },
-                'masuk': {
-                    activeBg: '#059669',
-                    activeColor: '#ffffff',
-                    activeBorder: '#facc15',
-                    normalBg: '#ecfdf5',
-                    normalColor: '#065f46',
-                    normalBorder: '#a7f3d0',
-                },
-                'telat': {
-                    activeBg: '#d97706',
-                    activeColor: '#ffffff',
-                    activeBorder: '#facc15',
-                    normalBg: '#fffbeb',
-                    normalColor: '#78350f',
-                    normalBorder: '#fde68a',
-                },
-                'sakit': {
-                    activeBg: '#db2777',
-                    activeColor: '#ffffff',
-                    activeBorder: '#facc15',
-                    normalBg: '#fdf2f8',
-                    normalColor: '#831843',
-                    normalBorder: '#fbcfe8',
-                },
-                'izin': {
-                    activeBg: '#7c3aed',
-                    activeColor: '#ffffff',
-                    activeBorder: '#facc15',
-                    normalBg: '#faf5ff',
-                    normalColor: '#581c87',
-                    normalBorder: '#e9d5ff',
-                },
-                'alpha': {
-                    activeBg: '#e11d48',
-                    activeColor: '#ffffff',
-                    activeBorder: '#facc15',
-                    normalBg: '#fff1f2',
-                    normalColor: '#881337',
-                    normalBorder: '#fecdd3',
-                }
-            };
-
-            for (const key in pillConfigs) {
-                const el = document.getElementById('pill-filter-' + key);
-                if (el) {
-                    const cfg = pillConfigs[key];
-                    const isActive = (key === status);
-                    el.style.backgroundColor = isActive ? cfg.activeBg : cfg.normalBg;
-                    el.style.color = isActive ? cfg.activeColor : cfg.normalColor;
-                    el.style.borderColor = isActive ? cfg.activeBorder : cfg.normalBorder;
-                    el.style.boxShadow = isActive ? '0 4px 12px rgba(0,0,0,0.2)' : 'none';
-                    el.style.fontWeight = isActive ? '900' : '700';
-                    el.style.transform = isActive ? 'scale(1.05)' : 'scale(1)';
-                }
-            }
         }
 
-        let currentActiveStatus = 'all';
         function filterPegawaiSearch() {
-            filterPegawaiTable(currentActiveStatus);
+            const table = document.getElementById('tableSemuaPegawai');
+            const search = document.getElementById('employeeSearchInput').value.toLowerCase().trim();
+            let matches = 0;
+            table.querySelectorAll('.pegawai-row').forEach(row => {
+                const found = row.dataset.name.includes(search) || row.dataset.role.includes(search);
+                row.style.display = found ? '' : 'none';
+                if (found) matches++;
+            });
+            document.getElementById('noRowsFoundSemua')?.classList.toggle('hidden', matches > 0);
+            table.dispatchEvent(new Event('table-filtered'));
+        }
+
+        function resetPegawaiSearch() {
+            const search = document.getElementById('employeeSearchInput');
+            search.value = '';
+            filterPegawaiSearch();
+            search.focus();
         }
 
         function showDashboardPhoto(src, title) {

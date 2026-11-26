@@ -8,6 +8,9 @@ use Illuminate\Database\Eloquent\Model;
 class Role extends Model
 {
     use HasFactory;
+
+    public const DIVISIONS = ['Petugas Kebersihan', 'Satpam', 'Driver', 'Kabag (Kepala Bagian)'];
+
     protected $fillable = ['name'];
 
     // Relasi one-to-many dengan tabel employees

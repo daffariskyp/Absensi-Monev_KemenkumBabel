@@ -1,167 +1,110 @@
-<x-layouts.layout :title="$title">
-    <div class="bg-white rounded-lg shadow-md p-6 max-w-full w-full h-full mx-auto">
-        <form action="{{ route('users.update', $user->employee->id)}}" method="POST" id="edit-form" enctype="multipart/form-data">
+<x-layouts.layout :title="$title" :active="$active">
+    @php
+        $employee = $user->employee;
+        $fields = [
+            'name' => ['Nama lengkap', 'text', 255, $user->name],
+            'work_email' => ['Email kantor', 'email', 255, $employee?->work_email],
+            'phone_number' => ['Nomor HP', 'tel', 15, $employee?->phone_number],
+            'birth_date' => ['Tanggal lahir', 'date', null, $employee?->birth_date],
+            'education' => ['Pendidikan terakhir', 'text', 255, $employee?->education],
+            'telegram_link' => ['Telegram', 'text', 255, $employee?->telegram_link],
+        ];
+    @endphp
+
+    <section class="max-w-5xl mx-auto py-4">
+        <form action="{{ route('users.profile.update') }}" method="POST" enctype="multipart/form-data"
+            class="bg-white rounded-2xl border border-blue-200 p-4 sm:p-6 shadow-sm">
             @csrf
             @method('PUT')
-            <div class="flex justify-start items-start mb-8 gap-4 pl-8 space-x-8">
-                <div class="relative mt-6 z-1" id="image-preview">
-                    @if ($user->employee->photo)
-                        <img
-                            src="/storage/{{ $user->employee->photo }}"
-                            alt="Profile Picture"
-                            class="w-24 h-24 rounded-full object-cover" id="current-image">
-                    @else
-                        <div class="w-24 h-24 bg-zinc-200 rounded-full flex items-center justify-center overflow-hidden">
-                            <span class="text-gray-400 text-sm">Preview</span>
-                        </div>
-                    @endif
-                    @if ($user->employee->photo)
-                        <input type="hidden" name="old_photo" id="old_photo" value="{{ $user->employee->photo }}">
-                    @endif
-                </div>
 
-                <div class="mt-6 flex-1 pr-8">
-                    <h2 class="text-xl font-semibold">{{ $user->name }}</h2>
-                    <p class="text-gray-600">{{ $user->employee->role->name }}</p>
+            <h1 class="text-2xl font-bold text-gray-900">Profil Saya</h1>
+            @if(session('profile_saved'))
+                <p role="status" class="mt-3 rounded-xl bg-emerald-50 border border-emerald-200 p-3 text-sm text-emerald-800">
+                    {{ session('profile_saved') }}
+                </p>
+            @endif
+            @if($errors->any())
+                <p role="alert" class="mt-3 text-sm text-red-700">Profil belum tersimpan. {{ $errors->first() }}</p>
+            @endif
 
-                    <div class="mt-2 flex gap-4">
-                        <div>
-                            <label for="photo-upload" class="cursor-pointer bg-sky-blue text-white text-xs font-medium px-4 py-1 rounded hover:bg-blue-600">
-                                Upload Picture
-                            </label>
-                            <input id="photo-upload" name="photo" type="file" accept="image/*" class="hidden" />
-                        </div>
-                        <button class="ml-auto mr-8 bg-black text-xs w-24 text-white px-2 py-1 rounded hover:bg-gray-800" id="reactive-button">
-                            Edit
-                        </button>
-                    </div>
+            <div class="mt-5 flex flex-wrap items-center gap-4">
+                <img id="profile-photo-preview"
+                    src="{{ $employee?->photo ? asset('storage/' . $employee->photo) : asset('blank_profile.png') }}"
+                    alt="Pratinjau foto profil" width="96" height="96"
+                    class="w-24 h-24 rounded-full border border-blue-200 object-cover">
+                <div class="min-w-0">
+                    <label for="profile-photo" class="block font-semibold text-sm">Foto profil</label>
+                    <input id="profile-photo" type="file" name="photo" accept="image/jpeg,image/png,image/webp"
+                        aria-describedby="profile-photo-help" class="block w-full mt-1 text-sm">
+                    <p id="profile-photo-help" class="text-xs text-gray-600 mt-1">JPG, PNG, atau WebP hingga 5 MB.</p>
+                    @error('photo')
+                        <p class="text-xs text-red-700 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-6 mb-4 mr-7 ml-4">
-                <div class="space-y-3 mt-10">
-                    <div class="flex items-center justify-between mr-24">
-                        <p class="text-gray-600 text-lg">Project Total</p>
-                        <input type="text" class="w-20 text-lg font-semibold px-2 py-1 rounded border text-center" value="{{ $sumProjects }}" readonly disabled>
+            <dl class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4 rounded-xl border border-blue-200 p-4">
+                <div>
+                    <dt class="text-xs text-gray-600">Akses akun</dt>
+                    <dd class="text-sm font-semibold">{{ ['admin' => 'Administrator', 'supervisor' => 'Supervisor', 'user' => 'Pengguna'][$user->role] ?? $user->role }}</dd>
+                </div>
+                <div>
+                    <dt class="text-xs text-gray-600">Divisi / jabatan</dt>
+                    <dd class="text-sm font-semibold">{{ $employee?->role?->name ?? 'Belum ditetapkan' }}</dd>
+                </div>
+            </dl>
+
+            <div class="mt-5 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                @foreach($fields as $name => [$label, $type, $maxLength, $value])
+                    <div>
+                        <label class="block text-sm font-semibold mb-1" for="profile-{{ $name }}">{{ $label }}</label>
+                        <input class="w-full min-w-0 rounded-xl border border-blue-200 px-3 py-2 text-sm"
+                            id="profile-{{ $name }}" name="{{ $name }}" type="{{ $type }}" value="{{ old($name, $value) }}"
+                            @if($maxLength) maxlength="{{ $maxLength }}" @endif
+                            @required($name === 'name')>
+                        @error($name)
+                            <p class="text-xs text-red-700 mt-1">{{ $message }}</p>
+                        @enderror
                     </div>
-                    <div class="flex items-center justify-between mr-24">
-                        <p class="text-gray-600 text-lg">Tasks Done</p>
-                        <input type="text" class="w-20 text-lg font-semibold px-2 py-1 rounded border text-center" value="{{ $sumTasks }}" readonly disabled>
-                    </div>
-                    <div class="flex items-center justify-between mr-24">
-                        <p class="text-gray-600 text-lg">Total Leave</p>
-                        <input type="text" class="w-20 text-lg font-semibold px-2 py-1 rounded border text-center" value="4" readonly disabled>
-                    </div>
+                @endforeach
+
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-semibold mb-1" for="profile-address">Alamat</label>
+                    <textarea class="w-full rounded-xl border border-blue-200 px-3 py-2 text-sm"
+                        id="profile-address" name="address" maxlength="255" rows="2">{{ old('address', $employee?->address) }}</textarea>
+                    @error('address')
+                        <p class="text-xs text-red-700 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
 
-                <div class="col-span-2 grid grid-cols-2 gap-6">
-                    <div class="space-y-4">
-                        <div>
-                            <label class="text-gray-600 block mb-1">Email</label>
-                            <input type="email" name="work_email" value="{{ $user->employee->work_email }}" class="w-full border rounded-md px-3 py-2" readonly>
-                        </div>
-                        <div>
-                            <label class="text-gray-600 block mb-1">No. HP</label>
-                            <input type="text" name="phone_number" value="{{ $user->employee->phone_number }}" class="w-full border rounded-md px-3 py-2" readonly>
-                        </div>
-                        <div>
-                            <label class="text-gray-600 block mb-1">Alamat</label>
-                            <input type="text" name="address" value="{{ $user->employee->address }}" class="w-full border rounded-md px-3 py-2" readonly>
-                        </div>
-                    </div>
-
-                    <div class="space-y-4">
-                        <div>
-                            <label class="text-gray-600 block mb-1">Password</label>
-                            <input type="password" name="password" class="w-full border rounded-md px-3 py-2" readonly>
-                        </div>
-                        <div>
-                            <label class="text-gray-600 block mb-1">Link Telegram</label>
-                            <input type="text" name="telegram_link" value="{{ $user->employee->telegram_link }}" class="w-full border rounded-md px-3 py-2" readonly>
-                        </div>
-                        <div>
-                            <label class="text-gray-600 block mb-1">Tanggal Lahir</label>
-                            <div class="relative">
-                                <input type="date" name="birth_date" value="{{ $user->employee->birth_date }}" class="w-full border rounded-md px-3 py-2" readonly>
-                            </div>
-                        </div>
-                    </div>
+                <div class="sm:col-span-2">
+                    <label class="block text-sm font-semibold mb-1" for="profile-bio">Tentang saya</label>
+                    <textarea class="w-full rounded-xl border border-blue-200 px-3 py-2 text-sm"
+                        id="profile-bio" name="bio" maxlength="1000" rows="4">{{ old('bio', $employee?->bio) }}</textarea>
+                    @error('bio')
+                        <p class="text-xs text-red-700 mt-1">{{ $message }}</p>
+                    @enderror
                 </div>
             </div>
+
+            <button type="submit" class="app-action mt-5">Simpan profil</button>
         </form>
 
+    </section>
 
-        <div class="px-5 pb-7 pt-2 mb-4">
-             <div class="max-w-sm">
-                <div class="text-sm text-gray-600 mb-2">Work hours</div>
-                <div class="flex items-center">
-                    <div class="relative h-7 bg-gray-200 rounded-full overflow-hidden flex-grow">
-                        <div class="absolute h-full bg-blue-900 rounded-full" style="width: {{$user->totalWorkDuration > 100 ? 100 : $user->totalWorkDuration}}%;"></div>
-                        <div class="absolute inset-0 flex items-center justify-center text-xs font-bold {{$user->totalWorkDuration > 45 ? 'text-white' : 'text-black'}}">
-                            {{ $user->totalWorkDuration }}%
-                        </div>
-                    </div>
+    <script>
+        (() => {
+            const input = document.getElementById('profile-photo');
+            const preview = document.getElementById('profile-photo-preview');
+            const savedPhoto = preview.src;
+            let previewUrl;
 
-                @if ($user->totalWorkDuration > 100)
-                    <div class="flex items-center ml-3">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4" viewBox="0 0 24 24">
-                            <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10s10-4.48 10-10S17.52 2 12 2m1 15h-2v-6h2zm0-8h-2V7h2z"/>
-                        </svg>
-                        <span class="text-sm text-gray-500 ml-1">Overwork</span>
-                    </div>
-                @endif
-            </div>
-        </div>
-    </div>
+            input.addEventListener('change', () => {
+                if (previewUrl) URL.revokeObjectURL(previewUrl);
+                const photo = input.files[0];
+                previewUrl = photo ? URL.createObjectURL(photo) : null;
+                preview.src = previewUrl ?? savedPhoto;
+            });
+        })();
+    </script>
 </x-layouts.layout>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const fileInput = document.getElementById('photo-upload');
-        const imagePreview = document.getElementById('image-preview');
-        const reactiveButton = document.getElementById('reactive-button');
-        const formEdit = document.getElementById('edit-form');
-
-        reactiveButton.addEventListener('click', function(e) {
-            e.preventDefault();
-
-            if (this.innerText === 'Edit') {
-                const inputs = formEdit.querySelectorAll('input:not([type="hidden"]):not([disabled])');
-                inputs.forEach(input => {
-                    input.removeAttribute('readonly');
-                });
-                this.innerText = 'Save';
-            } else {
-                formEdit.submit();
-            }
-        });
-
-        fileInput.addEventListener('change', function(event) {
-            const file = event.target.files[0];
-
-            if (file && file.type.startsWith('image/')) {
-                const reader = new FileReader();
-
-                reader.onload = function(e) {
-                    imagePreview.innerHTML = '';
-
-                    const img = document.createElement('img');
-                    img.src = "/storage/{{ $user->employee->photo }}"
-                    img.alt = 'Profile Picture';
-                    img.id = 'current-image';
-                    img.className = "w-24 h-24 rounded-full object-cover" id="current-image"
-
-                    imagePreview.appendChild(img);
-                };
-
-                reader.readAsDataURL(file);
-            } else {
-                imagePreview.innerHTML = `
-                    <div class="w-24 h-24 bg-zinc-200 rounded-full flex items-center justify-center overflow-hidden">
-                        <span class="text-gray-400 text-sm">Preview</span>
-                    </div>
-                `;
-            }
-        });
-    });
-
-</script>

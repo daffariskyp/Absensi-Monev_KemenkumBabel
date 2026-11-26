@@ -1,11 +1,11 @@
 <x-layouts.layout :title="$title" :active="$active">
     <main class="max-w-screen w-full mx-auto rounded-xl bg-white border">
         <!-- Search and Add Button -->
-        <div class="flex items-center justify-between mb-2 pt-3 px-6">
-            <form action="{{ route('admin.index') }}" method="GET" class="w-1/2 flex" id="filterForm">
-                <div class="flex items-center w-[60%]">
-                    <input type="text" placeholder="Search SDM"
-                        class="border rounded-lg w-full pl-9 pr-4 py-1 focus:outline-none text-sm"
+        <div class="admin-toolbar flex items-center justify-between mb-2 pt-3 px-6">
+            <form action="{{ route('admin.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
+                <div class="relative flex items-center">
+                    <input type="search" placeholder="Cari nama atau email" aria-label="Cari nama atau email"
+                        class="table-filter pl-9 pr-4 py-1 text-sm"
                         value="{{ request('search') }}" name="search" />
                     <svg class="size-5 ml-3 z-0 absolute" viewBox="0 0 41 41" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
@@ -14,11 +14,11 @@
                             fill="#616161" fill-opacity="0.6" />
                     </svg>
                 </div>
-                <div class="ml-5 w-[40%]">
+                <div>
                     <select name="role"
-                        class="w-[94%] primary-gray font-medium rounded-lg py-1 px-2 text-sm border outline-none"
-                        id="roleFilter">
-                        <option value="">Filter by division</option>
+                        class="primary-gray font-medium rounded-lg py-1 px-2 text-sm border outline-none"
+                        aria-label="Divisi">
+                        <option value="">Semua divisi</option>
                         @foreach ($roles as $role)
                             <option value="{{ $role->id }}" {{ request('role') == $role->id ? 'selected' : '' }}>
                                 {{ $role->name }}
@@ -26,6 +26,7 @@
                         @endforeach
                     </select>
                 </div>
+                <button type="submit" class="app-action">Cari</button>
             </form>
             <a href="{{ route('admin.create') }}"
                 class="btn-colorful bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 cursor-pointer text-white text-xs px-4 py-2 rounded-xl shadow-md flex justify-center items-center gap-1.5 transition border border-transparent">
@@ -34,7 +35,7 @@
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M5 12h14m-7 7V5" />
                 </svg>
-                Add New SDM
+                Tambah pegawai
             </a>
         </div>
 
@@ -60,6 +61,8 @@
                             </td>
                             <td class="px-4 py-2.5 text-sm">
                                 <a href="{{ route('admin.edit', $employee->id) }}" class="font-bold text-gray-900 hover:text-blue-600 transition flex items-center gap-1.5" title="Klik untuk edit data">
+                                    <img src="{{ $employee->photo ? asset('storage/' . $employee->photo) : asset('blank_profile.png') }}"
+                                        alt="" width="32" height="32" loading="lazy" class="w-8 h-8 rounded-full object-cover">
                                     {{ $employee->user->name ?? 'No username' }}
                                 </a>
                             </td>
@@ -118,10 +121,6 @@
     </main>
 </x-layouts.layout>
 <script>
-    document.getElementById('roleFilter').addEventListener('change', function() {
-        document.getElementById('filterForm').submit();
-    });
-
     // SweetAlert Konfirmasi Hapus Langsung dari Tabel Admin
     function confirmDeleteDirect(employeeId, employeeName) {
         if (typeof Swal !== 'undefined') {

@@ -3,11 +3,11 @@
         <!-- Header -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">Rekapan Absensi & Monev Pegawai Non-ASN</h1>
-                <p class="text-sm text-gray-500 mt-1">Laporan rekapitulasi kehadiran, foto wajah, monev harian, kendala (min 100 kar), dan bukti foto kegiatan.</p>
+                <h1 class="text-2xl font-bold text-gray-800">Rekap Bulanan Kehadiran &amp; Monev</h1>
+                <p class="text-sm text-gray-500 mt-1">Periode {{ $monthName }}</p>
             </div>
             <div class="flex items-center gap-3">
-                <a href="{{ route('attendance.print', request()->all()) }}" target="_blank"
+                <a href="{{ route('attendance.print', ['month' => $month, 'year' => $year, 'user_id' => $selectedUserId, 'status' => $statusFilter]) }}" target="_blank"
                     class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow flex items-center gap-2 transition">
                     <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -25,31 +25,36 @@
         </div>
 
         <!-- Summary Stat Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
             <div class="bg-white border rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-gray-500 uppercase">Total Tercatat</div>
-                <div class="text-2xl font-bold text-gray-900 mt-1">{{ $stats['total'] }}</div>
+                <div class="text-2xl font-bold text-gray-900 mt-1" data-count-up>{{ $stats['total'] }}</div>
                 <div class="text-[11px] text-gray-400 mt-0.5">Hari Kerja</div>
             </div>
             <div class="bg-white border border-emerald-100 rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-emerald-600 uppercase">Hadir Tepat Waktu</div>
-                <div class="text-2xl font-bold text-emerald-700 mt-1">{{ $stats['tepat_waktu'] }}</div>
+                <div class="text-2xl font-bold text-emerald-700 mt-1" data-count-up>{{ $stats['tepat_waktu'] }}</div>
                 <div class="text-[11px] text-emerald-500 mt-0.5">Sesuai Ketentuan Jam</div>
             </div>
             <div class="bg-white border border-amber-100 rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-amber-600 uppercase">Hadir Terlambat</div>
-                <div class="text-2xl font-bold text-amber-700 mt-1">{{ $stats['terlambat'] }}</div>
+                <div class="text-2xl font-bold text-amber-700 mt-1" data-count-up>{{ $stats['terlambat'] }}</div>
                 <div class="text-[11px] text-amber-500 mt-0.5">Melewati Batas Masuk</div>
             </div>
             <div class="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-blue-600 uppercase">Izin / Cuti</div>
-                <div class="text-2xl font-bold text-blue-700 mt-1">{{ $stats['izin'] }}</div>
+                <div class="text-2xl font-bold text-blue-700 mt-1" data-count-up>{{ $stats['izin'] }}</div>
                 <div class="text-[11px] text-blue-500 mt-0.5">Disetujui Atasan</div>
             </div>
             <div class="bg-white border border-purple-100 rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-purple-600 uppercase">Sakit</div>
-                <div class="text-2xl font-bold text-purple-700 mt-1">{{ $stats['sakit'] }}</div>
+                <div class="text-2xl font-bold text-purple-700 mt-1" data-count-up>{{ $stats['sakit'] }}</div>
                 <div class="text-[11px] text-purple-500 mt-0.5">Surat Dokter</div>
+            </div>
+            <div class="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                <div class="text-xs font-semibold text-blue-700 uppercase">Kegiatan Monev</div>
+                <div class="text-2xl font-bold text-blue-900 mt-1" data-count-up>{{ $activities->total() }}</div>
+                <div class="text-[11px] text-blue-700 mt-0.5">Tercatat bulan ini</div>
             </div>
         </div>
 
@@ -58,8 +63,8 @@
             <form action="" method="GET" class="flex flex-wrap items-center gap-4">
                 <!-- Filter Bulan -->
                 <div class="flex items-center gap-2">
-                    <label class="text-xs font-semibold text-gray-700">Bulan:</label>
-                    <select name="month" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="this.form.submit()">
+                    <label for="recap-month" class="text-xs font-semibold text-gray-700">Bulan</label>
+                    <select id="recap-month" name="month" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500">
                         @for($m = 1; $m <= 12; $m++)
                             <option value="{{ $m }}" {{ $month == $m ? 'selected' : '' }}>
                                 {{ Carbon\Carbon::create(null, $m, 1)->locale('id')->translatedFormat('F') }}
@@ -70,19 +75,15 @@
 
                 <!-- Filter Tahun -->
                 <div class="flex items-center gap-2">
-                    <label class="text-xs font-semibold text-gray-700">Tahun:</label>
-                    <select name="year" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="this.form.submit()">
-                        @for($y = Carbon\Carbon::now()->year - 2; $y <= Carbon\Carbon::now()->year + 1; $y++)
-                            <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
-                        @endfor
-                    </select>
+                    <label for="recap-year" class="text-xs font-semibold text-gray-700">Tahun</label>
+                    <input id="recap-year" name="year" type="number" value="{{ $year }}" min="1900" max="9998" class="w-24 text-sm border border-gray-300 rounded-lg p-2 bg-gray-50" required>
                 </div>
 
                 <!-- Filter Pegawai (Admin & Supervisor / Kabag) -->
-                @if(in_array(auth()->user()->role, ['admin', 'supervisor']))
+                @if($canManageAll)
                     <div class="flex items-center gap-2">
-                        <label class="text-xs font-semibold text-gray-700">Pegawai Non-ASN:</label>
-                        <select name="user_id" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="this.form.submit()">
+                        <label for="recap-employee" class="text-xs font-semibold text-gray-700">Pegawai</label>
+                        <select id="recap-employee" name="user_id" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500">
                             <option value="">Semua Pegawai</option>
                             @foreach($employees as $empUser)
                                 <option value="{{ $empUser->id }}" {{ $selectedUserId == $empUser->id ? 'selected' : '' }}>
@@ -95,8 +96,8 @@
 
                 <!-- Filter Status -->
                 <div class="flex items-center gap-2">
-                    <label class="text-xs font-semibold text-gray-700">Status:</label>
-                    <select name="status" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="this.form.submit()">
+                    <label for="recap-status" class="text-xs font-semibold text-gray-700">Status kehadiran</label>
+                    <select id="recap-status" name="status" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500">
                         <option value="">Semua Status</option>
                         <option value="hadir" {{ $statusFilter === 'hadir' ? 'selected' : '' }}>Hadir</option>
                         <option value="terlambat" {{ $statusFilter === 'terlambat' ? 'selected' : '' }}>Terlambat</option>
@@ -105,14 +106,13 @@
                     </select>
                 </div>
 
-                <noscript>
-                    <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-xs rounded">Filter</button>
-                </noscript>
+                <button type="submit" class="app-action">Tampilkan rekap</button>
             </form>
         </div>
 
         <!-- Table Data -->
         <div class="bg-white border rounded-xl overflow-hidden shadow-sm">
+            <h2 class="p-4 text-base font-bold text-gray-800">Catatan kehadiran</h2>
             <div class="overflow-x-auto">
                 <table class="w-full border-collapse text-left">
                     <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-semibold">
@@ -234,9 +234,23 @@
             </div>
 
             <div class="p-4 border-t">
-                {{ $attendances->links() }}
+                {{ $attendances->withQueryString()->links() }}
             </div>
         </div>
+        <section class="mt-6 bg-white border rounded-xl overflow-hidden shadow-sm" id="rekap-monev">
+            <div class="p-4">
+                <h2 class="text-base font-bold text-gray-800">Aktivitas Monev bulanan</h2>
+                <p class="text-xs text-gray-600 mt-1">Daftar aktivitas mengikuti periode dan pegawai yang dipilih.</p>
+            </div>
+            <div class="overflow-x-auto">
+                @include('attendance.monthly-activities')
+            </div>
+            @if($activities->hasPages())
+                <div class="p-4 border-t">
+                    {{ $activities->withQueryString()->fragment('rekap-monev')->links() }}
+                </div>
+            @endif
+        </section>
     </div>
 
     <!-- Monev Detail Modal (Fixed Closing) -->

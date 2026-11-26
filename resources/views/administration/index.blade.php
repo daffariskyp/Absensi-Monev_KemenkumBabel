@@ -28,32 +28,32 @@
         <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
             <div class="bg-white border rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Izin</div>
-                <div class="text-2xl font-extrabold text-gray-800 mt-1">{{ $stats['total'] }}</div>
+                <div class="text-2xl font-extrabold text-gray-800 mt-1" data-count-up>{{ $stats['total'] }}</div>
                 <div class="text-[11px] text-gray-500">Semua Permohonan</div>
             </div>
             <div class="bg-white border border-amber-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Pending</div>
-                <div class="text-2xl font-extrabold text-amber-700 mt-1">{{ $stats['pending'] }}</div>
+                <div class="text-2xl font-extrabold text-amber-700 mt-1" data-count-up>{{ $stats['pending'] }}</div>
                 <div class="text-[11px] text-amber-500">Menunggu Atasan</div>
             </div>
             <div class="bg-white border border-emerald-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Disetujui</div>
-                <div class="text-2xl font-extrabold text-emerald-700 mt-1">{{ $stats['approved'] }}</div>
+                <div class="text-2xl font-extrabold text-emerald-700 mt-1" data-count-up>{{ $stats['approved'] }}</div>
                 <div class="text-[11px] text-emerald-500">Izin Diterima</div>
             </div>
             <div class="bg-white border border-rose-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-rose-600 uppercase tracking-wider">Ditolak</div>
-                <div class="text-2xl font-extrabold text-rose-700 mt-1">{{ $stats['rejected'] }}</div>
+                <div class="text-2xl font-extrabold text-rose-700 mt-1" data-count-up>{{ $stats['rejected'] }}</div>
                 <div class="text-[11px] text-rose-500">Tidak Diizinkan</div>
             </div>
             <div class="bg-white border border-purple-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-purple-600 uppercase tracking-wider">Izin Sakit</div>
-                <div class="text-2xl font-extrabold text-purple-700 mt-1">{{ $stats['sakit'] }}</div>
+                <div class="text-2xl font-extrabold text-purple-700 mt-1" data-count-up>{{ $stats['sakit'] }}</div>
                 <div class="text-[11px] text-purple-500">Surat Dokter</div>
             </div>
             <div class="bg-white border border-blue-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Cuti Tahunan</div>
-                <div class="text-2xl font-extrabold text-blue-700 mt-1">{{ $stats['cuti'] }}</div>
+                <div class="text-2xl font-extrabold text-blue-700 mt-1" data-count-up>{{ $stats['cuti'] }}</div>
                 <div class="text-[11px] text-blue-500">Hak Cuti Non-ASN</div>
             </div>
         </div>
@@ -87,6 +87,11 @@
         <!-- Filter Bar -->
         <div class="bg-white border rounded-xl p-4 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
             <form action="" method="GET" class="flex flex-wrap items-center gap-3">
+                <input type="search" name="search" aria-label="Cari nama pemohon"
+                    value="{{ request()->string('search') }}" placeholder="Cari nama pemohon"
+                    class="table-filter px-3 text-sm">
+                <button type="submit" class="app-action">Cari</button>
+
                 <!-- Filter Kategori -->
                 <div>
                     <select name="leave_category"
@@ -314,7 +319,7 @@
 
             @if($administrations->hasPages())
                 <div class="p-4 border-t">
-                    {{ $administrations->links() }}
+                    {{ $administrations->withQueryString()->links() }}
                 </div>
             @endif
         </div>

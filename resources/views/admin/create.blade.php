@@ -65,22 +65,11 @@
                             class="w-[94%] primary-gray font-medium rounded-lg py-1.5 px-3 text-sm border border-gray-300 outline-none focus:ring-2 focus:ring-blue-400"
                             required>
                             <option value="">Pilih Jabatan Pegawai</option>
-                            @php
-                                $hasKabag = false;
-                            @endphp
                             @foreach ($roles as $role)
-                                @if(stripos($role->name, 'kabag') !== false)
-                                    @php $hasKabag = true; @endphp
-                                @endif
                                 <option value="{{ $role->id }}" {{ old('role_id') == $role->id ? 'selected' : '' }}>
                                     {{ $role->name }}
                                 </option>
                             @endforeach
-                            @if(!$hasKabag)
-                                <option value="kabag_new" {{ old('role_id') == 'kabag_new' ? 'selected' : '' }}>
-                                    Kabag (Kepala Bagian)
-                                </option>
-                            @endif
                         </select>
                         @error('role_id')
                             <span class="text-red-600 text-xs">{{ $message }}</span>

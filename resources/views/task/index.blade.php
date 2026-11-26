@@ -47,7 +47,7 @@
                     </div>
                 @endif
 
-                @if (auth()->user()->role === 'admin' || auth()->user()->employee->role->name === 'Project Director')
+                @if (auth()->user()->role === 'admin' || auth()->user()->employee?->role?->name === 'Project Director')
                     <div class="w-1/3 hidden sm:block">
                         <button id="openModalTransferBtn"
                                 class="bg-primary-black flex items-center justify-center w-full text-xs text-white px-4 py-2 rounded-md hover:bg-zinc-700 whitespace-nowrap">
@@ -322,7 +322,7 @@
                 </div>
 
                 <!-- Send to -->
-                @if (auth()->user()->role === 'admin' || auth()->user()->employee->role->name === 'Project Director')
+                @if (auth()->user()->role === 'admin' || auth()->user()->employee?->role?->name === 'Project Director')
                     <div class="space-y-1 relative">
                         <label class="block sm:text-sm xs:text-[10px] text-gray-700" for="assigned_project_employee_id">Send to</label>
                         <button id="dropdown-transfer-employee"

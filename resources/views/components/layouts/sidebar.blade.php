@@ -1,5 +1,5 @@
-<div class="w-[8.5%] h-screen fixed z-50"> 
-    <nav class="pt-8 items-center bg-white flex flex-col space-y-7 h-full relative border-r relative z-50">
+<div class="app-sidebar" id="app-sidebar">
+    <nav aria-label="Navigasi utama" class="pt-8 items-center bg-white flex flex-col space-y-7 h-full relative border-r relative z-50">
         @if(auth()->user()->role === 'admin')
             {{-- Admin Menu: Presensi, Monev, Izin/Cuti, & Manajemen Non-ASN --}}
             <x-sidebar.dashboard :active="$active" />
