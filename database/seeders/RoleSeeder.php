@@ -13,17 +13,6 @@ class RoleSeeder extends Seeder
             ['name' => 'Satpam'],
             ['name' => 'Driver'],
             ['name' => 'Petugas Kebersihan'],
-            ['name' => 'Koordinator Lapangan'],
-            ['name' => 'Project Director'],
-            ['name' => 'Analyst'],
-            ['name' => 'Designer'],
-            ['name' => 'Engineer Web'],
-            ['name' => 'Engineer Mobile'],
-            ['name' => 'Engineer Android'],
-            ['name' => 'Engineer IOS'],
-            ['name' => 'Content Creator'],
-            ['name' => 'Engineer Tester'],
-            ['name' => 'Copy Writer'],
         ];
 
         foreach ($roles as $role) {

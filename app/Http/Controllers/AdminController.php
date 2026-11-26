@@ -14,13 +14,13 @@ class AdminController extends Controller
 {
     public function __construct()
     {
+        $this->middleware('auth');
         $this->middleware(function ($request, $next) {
-            if (!auth()->user()->employee) {
+            if (auth()->check() && auth()->user()->role === 'admin') {
                 return $next($request);
             }
 
-            return redirect()->route('dashboard');
-
+            abort(403, 'Akses ditolak: Menu manajemen SDM hanya dapat diakses oleh Administrator Utama.');
         });
     }
 
@@ -52,8 +52,8 @@ class AdminController extends Controller
             $query->where('role_id', $roleFilter);
         }
 
-        // Paginate hasil query
-        $employees = $query->paginate(10);
+        // Tampilkan seluruh pegawai dalam 1 halaman utama (hingga 100 pegawai) agar tombol Hapus tidak terpotong pagination
+        $employees = $query->paginate(100);
 
         // Ambil semua role
         $roles = Role::all();
@@ -86,36 +86,46 @@ class AdminController extends Controller
     public function store(Request $request)
     {
         try {
+            // Jika memilih Kabag (Kepala Bagian)
+            if ($request->input('role_id') === 'kabag_new') {
+                $kabagRole = Role::firstOrCreate(['name' => 'Kabag (Kepala Bagian)']);
+                $request->merge(['role_id' => $kabagRole->id]);
+            }
+
             $validated = $request->validate([
               'name' => 'required|string|max:255',
               'email' => 'required|email|unique:users,email',
               'password' => 'required|min:8|confirmed',
               'role_id' => 'required|exists:roles,id',
+              'system_role' => 'nullable|in:admin,supervisor,user',
             ]);
+
+            $systemRole = $validated['system_role'] ?? ($validated['role_id'] == 2 ? 'admin' : 'user');
 
             $user = User::create([
               'name' => $validated['name'],
               'email' => $validated['email'],
-                'password' => $validated['password'],
-                'role' => $validated['role_id'] == 2 ? 'admin' : 'user',
+              'password' => $validated['password'],
+              'role' => $systemRole,
             ]);
 
             Employee::create([
               'user_id' => $user->id,
               'role_id' => $validated['role_id'],
+              'work_email' => $validated['email'],
             ]);
 
-            return redirect()->route('admin.index')->with('success', 'User created successfully!');
+            return redirect()->route('admin.index')->with('success', 'Akun SDM berhasil dibuat!');
         } catch (\Illuminate\Validation\ValidationException $e) {
             return redirect()->back()->withInput()->with('error', implode(' ', $e->errors()));
         } catch (\Exception $e) {
-            return redirect()->back()->withInput()->with('error', 'Failed to create user: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal membuat akun SDM: ' . $e->getMessage());
         }
     }
 
     public function edit($id)
     {
-        $employee = Employee::findOrFail($id);
+        $employee = Employee::with(['user', 'role'])->findOrFail($id);
         $roles = Role::all();
         $statuses = Employee::getStatuses();
 
@@ -130,12 +140,20 @@ class AdminController extends Controller
 
     public function update(Request $request, $id)
     {
-
         $employee = Employee::findOrFail($id);
 
+        if ($request->input('role_id') === 'kabag_new') {
+            $kabagRole = Role::firstOrCreate(['name' => 'Kabag (Kepala Bagian)']);
+            $request->merge(['role_id' => $kabagRole->id]);
+        }
+
         $validated = $request->validate([
+          'name' => 'nullable|string|max:255',
+          'system_role' => 'nullable|in:admin,supervisor,user',
+          'role_id' => 'nullable|exists:roles,id',
+          'password' => 'nullable|min:8|confirmed',
           'work_email' => 'required|email|unique:employees,work_email,' . $employee->id,
-          'photo' => 'nullable|image|max:2048', // Maksimum ukuran 2MB
+          'photo' => 'nullable|image|max:2048',
           'nik' => 'nullable|string|max:255|unique:employees,nik,' . $employee->id,
           'status' => 'nullable|in:Kontrak,Freelance,Tetap,Tenaga Ahli',
           'birth_date' => 'nullable|date',
@@ -152,10 +170,28 @@ class AdminController extends Controller
             }
             $validated['photo'] = $request->file('photo')->store('users-image', 'public');
         }
+
+        // Update User data (Name, Role, and Password jika diisi oleh Admin)
+        if ($employee->user) {
+            $userUpdates = [];
+            if ($request->filled('name')) {
+                $userUpdates['name'] = $request->input('name');
+            }
+            if ($request->filled('system_role')) {
+                $userUpdates['role'] = $request->input('system_role');
+            }
+            if ($request->filled('password')) {
+                $userUpdates['password'] = Hash::make($request->input('password'));
+            }
+            if (!empty($userUpdates)) {
+                $employee->user->update($userUpdates);
+            }
+        }
+
         // Update data employee
         $employee->update($validated);
 
-        return redirect()->route('admin.index')->with('success', 'Employee updated successfully!');
+        return redirect()->route('admin.index')->with('success', 'Data pegawai & password berhasil diperbarui oleh Administrator!');
     }
 
     public function destroy($id)

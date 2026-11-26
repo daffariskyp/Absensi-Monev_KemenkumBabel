@@ -59,7 +59,24 @@
                             <span class="text-red-700 font-bold">{{ $row['status'] }}</span>
                         @endif
                     </td>
-                    <td class="border border-gray-400 p-2">{{ $row['keterangan'] }}</td>
+                    <td class="border border-gray-400 p-2">
+                        <div>{{ $row['keterangan'] }}</div>
+                        @if(!empty($row['activities']) && $row['activities']->isNotEmpty())
+                            <div class="mt-1.5 pt-1.5 border-t border-gray-200">
+                                <span class="font-bold underline block mb-1">Rincian Monev Kegiatan ({{ $row['activities']->count() }}):</span>
+                                <ol class="list-decimal list-inside space-y-1">
+                                    @foreach($row['activities'] as $act)
+                                        <li>
+                                            <strong>[{{ substr($act->time, 0, 5) }}]</strong> {{ $act->activity_description }}
+                                            @if($act->obstacle && $act->obstacle !== 'Tidak ada kendala')
+                                                <span class="italic text-gray-600">(Kendala: {{ $act->obstacle }})</span>
+                                            @endif
+                                        </li>
+                                    @endforeach
+                                </ol>
+                            </div>
+                        @endif
+                    </td>
                 </tr>
             @empty
                 <tr>
@@ -71,21 +88,27 @@
         </tbody>
     </table>
 
-    <!-- Tanda Tangan -->
+    <!-- Tanda Tangan dengan QR Code Digital -->
     <div class="grid grid-cols-2 text-xs pt-8 gap-8">
-        <div class="text-center">
+        <div class="flex flex-col items-center text-center">
             <p>Mengetahui,</p>
-            <p class="font-bold">Pejabat Pembuat Komitmen (PPK) / Atasan Langsung</p>
-            <div class="h-20"></div>
-            <p class="font-bold underline">( .................................................... )</p>
-            <p class="text-gray-600">NIP. ............................................</p>
+            <p class="font-bold">Pejabat Pembuat Komitmen (PPK) / Kasubag TU</p>
+            <div class="my-2 p-1.5 border border-gray-800 rounded-xl bg-white shadow-sm inline-block">
+                @if(isset($qrSvg))
+                    {!! $qrSvg !!}
+                @endif
+            </div>
+            <p class="text-[10px] text-gray-500 font-semibold mb-1">Tanda Tangan Digital Terverifikasi QR</p>
+            <p class="font-bold underline text-sm">Kasubag Kepegawaian & Tata Usaha</p>
+            <p class="text-gray-600">Kementerian Hukum Republik Indonesia</p>
         </div>
-        <div class="text-center">
+        <div class="flex flex-col items-center text-center">
             <p>{{ $todayFormatted }}</p>
-            <p class="font-bold">Koordinator Pengelola Non-ASN</p>
-            <div class="h-20"></div>
-            <p class="font-bold underline">( {{ auth()->user()->name }} )</p>
-            <p class="text-gray-600">Administrator Sistem</p>
+            <p class="font-bold">Koordinator Pengelola Pegawai Non-ASN</p>
+            <div class="h-28 flex items-end justify-center">
+                <p class="font-bold underline text-sm">( {{ auth()->user()->name }} )</p>
+            </div>
+            <p class="text-gray-600">Pengelola Kepegawaian</p>
         </div>
     </div>
 </body>

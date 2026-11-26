@@ -178,5 +178,49 @@ class NonAsnDummySeeder extends Seeder
                 ]
             );
         }
+
+        // 4. Update Titik Lokasi Kantor ke Kanwil Kemenkumham Bangka Belitung
+        \App\Models\OfficeSetting::updateOrCreate(
+            ['id' => 1],
+            [
+                'office_name' => 'Kanwil Kemenkumham Kepulauan Bangka Belitung',
+                'latitude' => -2.1516954,
+                'longitude' => 106.1568149,
+                'radius_meters' => 500,
+                'check_in_start' => '06:00:00',
+                'check_in_end' => '08:30:00',
+                'check_out_start' => '16:00:00',
+            ]
+        );
+
+        // 5. Tambahkan contoh Monev Kegiatan Harian untuk user dummy
+        $sampleSatpam = User::where('email', 'bambang.satpam@nonasn.id')->first();
+        if ($sampleSatpam && \Illuminate\Support\Facades\Schema::hasTable('monev_activities')) {
+            \App\Models\MonevActivity::firstOrCreate(
+                [
+                    'user_id' => $sampleSatpam->id,
+                    'date' => Carbon::today()->toDateString(),
+                    'time' => '08:15:00',
+                ],
+                [
+                    'activity_description' => 'Melaksanakan serah terima piket jaga keamanan dan pengecekan gembok seluruh pintu akses utama.',
+                    'obstacle' => 'Tidak ada kendala',
+                    'photos' => [],
+                ]
+            );
+
+            \App\Models\MonevActivity::firstOrCreate(
+                [
+                    'user_id' => $sampleSatpam->id,
+                    'date' => Carbon::today()->toDateString(),
+                    'time' => '10:30:00',
+                ],
+                [
+                    'activity_description' => 'Patroli keliling area parkir kendaraan dinas dan memastikan seluruh kendaraan terkunci dengan aman.',
+                    'obstacle' => 'Tidak ada kendala',
+                    'photos' => [],
+                ]
+            );
+        }
     }
 }

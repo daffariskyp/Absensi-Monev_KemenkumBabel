@@ -2,6 +2,20 @@ import Swal from 'sweetalert2';
 import './bootstrap';
 import '../css/app.css';
 
+// Jadikan Swal global agar dapat diakses dari view Blade manapun
+window.Swal = Swal;
+
+// Visual feedback saat tombol diklik: efek shadow tactile (warna asli tombol tetap dipertahankan)
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('button, a.btn, [role="button"], .tab-btn');
+    if (btn && !btn.hasAttribute('disabled')) {
+        btn.classList.add('btn-clicked');
+        setTimeout(() => {
+            btn.classList.remove('btn-clicked');
+        }, 200);
+    }
+});
+
 // Modal Logout start
 document.addEventListener('DOMContentLoaded', function() {
     const logoutBtn = document.getElementById('logout-btn');
@@ -33,6 +47,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Handle delete button click
     document.querySelectorAll('.delete-btn-user').forEach(button => {
         button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
             const employeeId = this.getAttribute('data-id');
 
             Swal.fire({
@@ -98,6 +114,41 @@ function showAlert(type, title, message) {
         confirmButtonText: 'OK',
     });
 }
+
+// Fungsi global SweetAlert untuk Notifikasi Pengajuan Cuti Baru bagi Admin
+window.notifyPendingLeaves = function(count, latestName, latestCategory) {
+    if (!count || parseInt(count) <= 0) return;
+
+    Swal.fire({
+        icon: 'warning',
+        title: '<span style="color:#1e3a8a; font-weight:800;">Pengajuan Cuti Menunggu Persetujuan!</span>',
+        html: `
+            <div style="text-align: left; font-size: 13px; color: #374151; line-height: 1.6;">
+                <p style="margin-bottom: 8px;">Terdapat <b style="color: #2563eb; font-size: 16px;">${count}</b> pengajuan cuti/izin pegawai baru yang membutuhkan persetujuan Anda.</p>
+                ${latestName ? `
+                    <div style="background: #eff6ff; padding: 10px 14px; border-radius: 12px; border: 1px solid #bfdbfe; margin-top: 10px;">
+                        <div style="font-weight: 700; color: #1e40af; font-size: 12px; text-transform: uppercase;">Pengajuan Terbaru:</div>
+                        <div style="color: #1f2937; margin-top: 2px;"><b>${latestName}</b> - <span style="color:#4338ca; font-weight:600;">${latestCategory || 'Izin Pegawai'}</span></div>
+                    </div>
+                ` : ''}
+            </div>
+        `,
+        showCancelButton: true,
+        confirmButtonText: 'Tinjau Pengajuan Sekarang',
+        cancelButtonText: 'Nanti Saja',
+        confirmButtonColor: '#2563eb',
+        cancelButtonColor: '#64748b',
+        customClass: {
+            popup: 'rounded-2xl shadow-2xl border border-blue-100',
+            confirmButton: 'px-5 py-2.5 rounded-xl font-bold border-2 border-yellow-400 shadow-md text-white transition active:scale-95',
+            cancelButton: 'px-4 py-2.5 rounded-xl font-semibold transition active:scale-95'
+        }
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = '/administration?status=pending';
+        }
+    });
+};
 
 // Event DOMContentLoaded untuk memastikan elemen HTML sudah siap
 document.addEventListener('DOMContentLoaded', () => {

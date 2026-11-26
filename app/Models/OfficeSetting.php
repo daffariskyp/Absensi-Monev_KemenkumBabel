@@ -27,13 +27,26 @@ class OfficeSetting extends Model
         $setting = static::first();
         if (!$setting) {
             $setting = static::create([
-                'office_name' => 'Kantor Instansi Pegawai Non-ASN',
-                'latitude' => -6.1753924,
-                'longitude' => 106.8271528,
-                'radius_meters' => 250,
+                'office_name' => 'Kanwil Kemenkumham Kepulauan Bangka Belitung',
+                'latitude' => -2.155365,
+                'longitude' => 106.163656,
+                'radius_meters' => 10000,
                 'check_in_start' => '06:00:00',
                 'check_in_end' => '08:30:00',
                 'check_out_start' => '16:00:00',
+            ]);
+        } elseif (
+            $setting->office_name === 'Kantor Instansi Pegawai Non-ASN' 
+            || $setting->latitude < -5.0 
+            || $setting->radius_meters <= 250
+            || abs($setting->latitude - (-2.1516954)) > 1.0
+        ) {
+            // Otomatis perbarui dari koordinat lama Jakarta (-6.175) ke Kanwil Babel Kemenkum (-2.151)
+            $setting->update([
+                'office_name' => 'Kanwil Kemenkumham Kepulauan Bangka Belitung',
+                'latitude' => -2.1516954,
+                'longitude' => 106.1568149,
+                'radius_meters' => 500,
             ]);
         }
         return $setting;

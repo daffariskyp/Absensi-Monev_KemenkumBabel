@@ -1,8 +1,9 @@
 <nav class="py-4 px-6 flex justify-between items-center bg-white sticky top-0 z-50 border-b">
     <div class="flex justify-between items-center w-full">
-        <div class="flex items-center justify-center">
+        <div class="flex items-center">
             <!-- Logo -->
-            <img src="{{ asset('logo.png') }}" alt="logo" class="w-[160px] ml-3" loading="lazy">
+            <img src="{{ asset('kemenkum.png') }}"alt="Kementerian Hukum logo in the website navigation bar" class="w-[60px] ml-3" loading="lazy" >
+            <span class="ml-3 font-semibold text-sm text-gray-800">Kementerian Hukum Republik Indonesia</span>
         </div>
         <div class="w-[33%]">
             <div class="flex items-center relative">

@@ -8,12 +8,10 @@ use App\Http\Controllers\AuthController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
-use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\SettingController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TimeManagementController;
 use App\Http\Controllers\UserController;
-use App\Models\ProjectEmployee;
 use Illuminate\Support\Facades\Route;
 
 
@@ -30,8 +28,6 @@ Route::post('/logout', [AuthController::class, 'logout'])->name('logout');
 Route::middleware('auth')->group(function () {
   Route::get('dashboard', [DashboardController::class, 'index'])->name('dashboard');
   Route::get('/dashboard/print-today', [DashboardController::class, 'printToday'])->name('dashboard.printToday');
-  Route::resource('projects', ProjectController::class);
-  Route::put('/projects/{project}', [ProjectController::class, 'update'])->name('projects.update');
   Route::get('/tasks/all-task', [TaskController::class, 'allTask'])->name('tasks.allTask');
   Route::post('/tasks/{id}/update-status', [TaskController::class, 'updateStatus'])->name('tasks.updateStatus');
   Route::get('/tasks/{id}/employees', [TaskController::class, 'getEmployees'])->name('tasks.getEmployees');
@@ -46,6 +42,8 @@ Route::middleware('auth')->group(function () {
   Route::get('/users/profile', [UserController::class, 'show'])->name('users.profile');
 
   // Administration (Pengajuan Izin & Cuti Non-ASN)
+  Route::get('/administration/pending-count', [AdministrationController::class, 'getPendingCount'])->name('administration.pendingCount');
+  Route::get('/administration/{id}/print', [AdministrationController::class, 'printLeave'])->name('administration.print');
   Route::post('/administration/{id}/approve', [AdministrationController::class, 'approve'])->name('administration.approve');
   Route::post('/administration/{id}/reject', [AdministrationController::class, 'reject'])->name('administration.reject');
   Route::resource('administration', AdministrationController::class);
@@ -54,11 +52,14 @@ Route::middleware('auth')->group(function () {
   Route::get('/attendance', [AttendanceController::class, 'index'])->name('attendance.index');
   Route::post('/attendance/checkin', [AttendanceController::class, 'checkIn'])->name('attendance.checkin');
   Route::post('/attendance/checkout', [AttendanceController::class, 'checkOut'])->name('attendance.checkout');
+  Route::post('/attendance/monev', [AttendanceController::class, 'storeMonev'])->name('attendance.monev.store');
+  Route::delete('/attendance/monev/{id}', [AttendanceController::class, 'destroyMonev'])->name('attendance.monev.destroy');
   Route::get('/attendance/recap', [AttendanceController::class, 'recap'])->name('attendance.recap');
   Route::get('/attendance/print', [AttendanceController::class, 'printRecap'])->name('attendance.print');
   Route::get('/attendance/{id}/monev', [AttendanceController::class, 'getMonevDetail'])->name('attendance.monev');
   Route::get('/attendance/settings', [AttendanceController::class, 'settings'])->name('attendance.settings');
   Route::post('/attendance/settings', [AttendanceController::class, 'updateSettings'])->name('attendance.settings.update');
+  Route::post('/attendance/calibrate-office', [AttendanceController::class, 'calibrateOffice'])->name('attendance.calibrate');
 
   Route::get('/notify', function () {notify()->success('Notification Triggered!', 'Success');return back();})->name('notify');
 });

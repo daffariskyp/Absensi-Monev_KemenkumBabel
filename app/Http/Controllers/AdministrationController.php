@@ -33,12 +33,43 @@ class AdministrationController extends Controller
         ];
     }
 
+    /**
+     * Endpoint API untuk mengecek jumlah pengajuan cuti yang masih pending
+     */
+    public function getPendingCount()
+    {
+        $pending = Administration::with(['user.employee.role'])
+            ->where('status', 'pending')
+            ->latest()
+            ->get();
+
+        $latest = $pending->first();
+        $categories = self::getCategories();
+
+        return response()->json([
+            'count' => $pending->count(),
+            'latest_name' => $latest?->user?->name ?? null,
+            'latest_category' => $latest ? ($categories[$latest->leave_category] ?? $latest->leave_category) : null,
+            'latest_date' => $latest ? Carbon::parse($latest->start_date)->translatedFormat('d M Y') : null,
+            'items' => $pending->map(function ($item) use ($categories) {
+                return [
+                    'id' => $item->id,
+                    'user_name' => $item->user?->name ?? 'User',
+                    'role_name' => $item->user?->employee?->role?->name ?? 'Non-ASN',
+                    'category' => $categories[$item->leave_category] ?? $item->leave_category,
+                    'start_date' => Carbon::parse($item->start_date)->translatedFormat('d M Y'),
+                    'duration' => $item->lama_hari_cuti . ' hari',
+                ];
+            }),
+        ]);
+    }
+
     public function create()
     {
         $user = auth()->user();
 
-        // Jika bukan admin dan masih punya pengajuan pending, arahkan ke Halaman Tunggu
-        if ($user->role !== 'admin') {
+        // Jika bukan admin/supervisor dan masih punya pengajuan pending, arahkan ke Halaman Tunggu
+        if (!in_array($user->role, ['admin', 'supervisor'])) {
             $pendingLeave = Administration::with(['approver'])
                 ->where('user_id', $user->id)
                 ->where('status', 'pending')
@@ -71,7 +102,7 @@ class AdministrationController extends Controller
         $today = Carbon::today()->toDateString();
 
         // ALUR PEGAWAI NON-ASN: Langsung Form Pengajuan atau Halaman Tunggu Persetujuan
-        if ($user->role !== 'admin') {
+        if (!in_array($user->role, ['admin', 'supervisor'])) {
             $pendingLeave = Administration::with(['approver'])
                 ->where('user_id', $user->id)
                 ->where('status', 'pending')
@@ -111,7 +142,7 @@ class AdministrationController extends Controller
             ]);
         }
 
-        // ALUR ADMIN: Dashboard Pengajuan Izin, Cuti & Surat Sakit Pegawai
+        // ALUR ADMIN & SUPERVISOR: Dashboard Pengajuan Izin, Cuti & Surat Sakit Pegawai
         $query = Administration::with(['user.employee.role', 'approver']);
 
         if ($request->filled('user_id')) {
@@ -291,7 +322,7 @@ class AdministrationController extends Controller
 
     public function approve(Request $request, $id)
     {
-        if (auth()->user()->role !== 'admin') {
+        if (!in_array(auth()->user()->role, ['admin', 'supervisor'])) {
             abort(403, 'Hanya admin / atasan yang dapat menyetujui izin.');
         }
 
@@ -331,7 +362,7 @@ class AdministrationController extends Controller
 
     public function reject(Request $request, $id)
     {
-        if (auth()->user()->role !== 'admin') {
+        if (!in_array(auth()->user()->role, ['admin', 'supervisor'])) {
             abort(403, 'Hanya admin / atasan yang dapat menolak izin.');
         }
 
@@ -355,16 +386,68 @@ class AdministrationController extends Controller
     {
         $administration = Administration::findOrFail($id);
 
-        if (auth()->user()->role !== 'admin' && $administration->user_id !== auth()->id()) {
+        if (!in_array(auth()->user()->role, ['admin', 'supervisor']) && $administration->user_id !== auth()->id()) {
             abort(403);
         }
 
-        if ($administration->attachment && Storage::disk('public')->exists($administration->attachment)) {
-            Storage::disk('public')->delete($administration->attachment);
+        try {
+            if ($administration->attachment && Storage::disk('public')->exists($administration->attachment)) {
+                Storage::disk('public')->delete($administration->attachment);
+            }
+
+            $administration->delete();
+            notify()->success('Pengajuan izin berhasil dibatalkan / dihapus.', 'Berhasil');
+            return redirect()->route('administration.index');
+        } catch (\Exception $e) {
+            Log::error('Error deleting leave submission: ' . $e->getMessage());
+            notify()->error('Gagal menghapus pengajuan izin: ' . $e->getMessage(), 'Error');
+            return redirect()->back();
+        }
+    }
+
+    /**
+     * Cetak Bukti Cuti / Izin Resmi dengan Tanda Tangan QR Code
+     */
+    public function printLeave($id)
+    {
+        $administration = Administration::with(['user.employee.role', 'approver'])->findOrFail($id);
+        $user = auth()->user();
+
+        // Hanya pemilik atau atasan (admin/supervisor) yang dapat mencetak
+        if (!in_array($user->role, ['admin', 'supervisor']) && $administration->user_id !== $user->id) {
+            abort(403, 'Anda tidak berhak mencetak dokumen perizinan ini.');
         }
 
-        $administration->delete();
-        notify()->success('Pengajuan izin berhasil dihapus.', 'Berhasil');
-        return redirect()->route('administration.index');
+        $office = \App\Models\OfficeSetting::getActive();
+        $categories = self::getCategories();
+
+        // Generate data string untuk verifikasi QR Code
+        $docNumber = 'CUTI/' . Carbon::parse($administration->created_at)->format('Y/m') . '/' . str_pad($administration->id, 4, '0', STR_PAD_LEFT);
+        $approverName = $administration->approver?->name ?? 'Kasubag Kepegawaian & Tata Usaha';
+        $categoryLabel = $categories[$administration->leave_category] ?? $administration->leave_category;
+
+        $qrData = "KEMENTERIAN HUKUM RI\n" .
+                  "DOKUMEN RESMI BUKTI PERSETUJUAN CUTI & IZIN NON-ASN\n" .
+                  "NO: {$docNumber}\n" .
+                  "NAMA: " . ($administration->user?->name ?? '-') . "\n" .
+                  "NIK: " . ($administration->user?->employee?->nik ?? '-') . "\n" .
+                  "JABATAN: " . ($administration->user?->employee?->role?->name ?? 'Pegawai Non-ASN') . "\n" .
+                  "JENIS: {$categoryLabel}\n" .
+                  "DURASI: {$administration->lama_hari_cuti} Hari Kerja\n" .
+                  "TANGGAL: " . Carbon::parse($administration->start_date)->translatedFormat('d M Y') . " s/d " . Carbon::parse($administration->end_date)->translatedFormat('d M Y') . "\n" .
+                  "STATUS: RESMI DISETUJUI\n" .
+                  "DIVERIFIKASI OLEH: {$approverName}\n" .
+                  "WAKTU APPROVAL: " . Carbon::parse($administration->updated_at)->format('d/m/Y H:i') . " WIB";
+
+        $qrSvg = \App\Helpers\QrCodeHelper::generateSvg($qrData, 125);
+
+        return view('administration.print', [
+            'title' => 'Surat Bukti Persetujuan Cuti - ' . ($administration->user?->name ?? 'Pegawai'),
+            'administration' => $administration,
+            'office' => $office,
+            'categories' => $categories,
+            'docNumber' => $docNumber,
+            'qrSvg' => $qrSvg,
+        ]);
     }
 }

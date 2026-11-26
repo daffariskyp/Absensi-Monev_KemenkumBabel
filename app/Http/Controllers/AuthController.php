@@ -24,11 +24,11 @@ class AuthController extends Controller
         if (Auth::attempt($validatedata)) {
             $request->session()->regenerate();
 
-            if (Auth::user()->role !== 'admin') {
-                return redirect()->intended(route('attendance.index'));
+            if (in_array(Auth::user()->role, ['admin', 'supervisor'])) {
+                return redirect()->intended('dashboard');
             }
 
-            return redirect()->intended('dashboard');
+            return redirect()->intended(route('attendance.index'));
         }
 
         return back()->withErrors([

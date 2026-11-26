@@ -89,20 +89,26 @@
         </tbody>
     </table>
 
-    <!-- Tanda Tangan Pengesahan -->
+    <!-- Tanda Tangan Pengesahan dengan QR Code Digital -->
     <div class="grid grid-cols-2 text-xs pt-6 gap-8">
-        <div class="text-center">
+        <div class="flex flex-col items-center text-center">
             <p>Mengetahui,</p>
-            <p class="font-bold">Pejabat Pembuat Komitmen / Atasan Langsung</p>
-            <div class="h-20"></div>
-            <p class="font-bold underline">( .................................................... )</p>
-            <p class="text-gray-600">NIP. ............................................</p>
+            <p class="font-bold">Pejabat Pembuat Komitmen / Kasubag Tata Usaha</p>
+            <div class="my-2 p-1.5 border border-gray-800 rounded-xl bg-white shadow-sm inline-block">
+                @if(isset($qrSvg))
+                    {!! $qrSvg !!}
+                @endif
+            </div>
+            <p class="text-[10px] text-gray-500 font-semibold mb-1">Tanda Tangan Digital Terverifikasi QR</p>
+            <p class="font-bold underline text-sm">Kasubag Kepegawaian & Tata Usaha</p>
+            <p class="text-gray-600">Kementerian Hukum Republik Indonesia</p>
         </div>
-        <div class="text-center">
+        <div class="flex flex-col items-center text-center">
             <p>{{ Carbon\Carbon::now()->locale('id')->translatedFormat('d F Y') }}</p>
             <p class="font-bold">Pegawai Non-ASN Bersangkutan</p>
-            <div class="h-20"></div>
-            <p class="font-bold underline">( {{ $targetUser ? $targetUser->name : '....................................................' }} )</p>
+            <div class="h-28 flex items-end justify-center">
+                <p class="font-bold underline text-sm">( {{ $targetUser ? $targetUser->name : 'Seluruh Pegawai Terlampir' }} )</p>
+            </div>
             <p class="text-gray-600">Tenaga Pendukung Non-ASN</p>
         </div>
     </div>

@@ -78,8 +78,8 @@
                     </select>
                 </div>
 
-                <!-- Filter Pegawai (Admin) -->
-                @if(auth()->user()->role === 'admin')
+                <!-- Filter Pegawai (Admin & Supervisor / Kabag) -->
+                @if(in_array(auth()->user()->role, ['admin', 'supervisor']))
                     <div class="flex items-center gap-2">
                         <label class="text-xs font-semibold text-gray-700">Pegawai Non-ASN:</label>
                         <select name="user_id" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="this.form.submit()">
@@ -200,22 +200,25 @@
                                     @endif
                                 </td>
                                 <td class="py-3 px-3 text-center">
-                                    @if($att->monev_activity || $att->monev_obstacle)
+                                    @php
+                                        $hasDailyMonev = isset($att->daily_monev_activities) && $att->daily_monev_activities->isNotEmpty();
+                                        $hasLegacyMonev = !empty($att->monev_activity) || !empty($att->monev_obstacle);
+                                        $countAct = $hasDailyMonev ? $att->daily_monev_activities->count() : ($hasLegacyMonev ? 1 : 0);
+                                    @endphp
+                                    @if($hasDailyMonev || $hasLegacyMonev)
                                         <button type="button" onclick="loadMonevDetail({{ $att->id }})"
-                                            class="inline-flex items-center gap-1 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-200 transition">
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition shadow-sm hover:shadow">
                                             <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
-                                            Detail Monev
-                                            @if(!empty($att->activity_photos))
-                                                <span class="size-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center font-bold">
-                                                    {{ count($att->activity_photos) }}
-                                                </span>
-                                            @endif
+                                            <span>Lihat Monev</span>
+                                            <span class="px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">
+                                                {{ $countAct }}
+                                            </span>
                                         </button>
                                     @else
-                                        <span class="text-xs text-gray-400">Tidak ada monev</span>
+                                        <span class="text-xs text-gray-400 italic">Tidak ada monev</span>
                                     @endif
                                 </td>
                             </tr>
@@ -260,27 +263,18 @@
                     </div>
                 </div>
 
-                <!-- Uraian Aktivitas -->
-                <div>
-                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">1. Uraian Aktivitas Pekerjaan Hari Ini:</h4>
-                    <div id="mActivity" class="p-3 bg-gray-50 rounded-lg border text-gray-700 whitespace-pre-line leading-relaxed text-xs"></div>
+                <!-- Total Monev Count Banner -->
+                <div class="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                    <span class="text-xs font-bold text-indigo-900">Total Kegiatan yang Dilaporkan:</span>
+                    <span id="mTotalActivities" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-600 text-white">0 Kegiatan</span>
                 </div>
 
-                <!-- Kendala yang Dihadapi (Min 100 Karakter) -->
-                <div>
-                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">2. Kendala yang Dihadapi (Minimal 100 Karakter):</h4>
-                    <div id="mObstacle" class="p-3 bg-amber-50/60 border border-amber-200 rounded-lg text-amber-900 whitespace-pre-line leading-relaxed text-xs"></div>
-                </div>
-
-                <!-- Bukti Foto Kegiatan (Maks 3 Foto) -->
-                <div>
-                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">3. Bukti Foto Kegiatan (Dokumentasi Lapangan):</h4>
-                    <div id="mPhotos" class="grid grid-cols-3 gap-3"></div>
-                </div>
+                <!-- Container Semua Kegiatan (Maks 10) -->
+                <div id="mActivitiesList" class="space-y-3"></div>
             </div>
 
             <div class="mt-6 pt-4 border-t flex justify-end">
-                <button type="button" onclick="closeMonevModal()" class="px-5 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-xs font-semibold text-gray-700 transition">
+                <button type="button" onclick="closeMonevModal()" class="btn-colorful px-5 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 rounded-xl text-xs font-bold text-white shadow-md transition border border-transparent">
                     Tutup
                 </button>
             </div>
@@ -298,7 +292,7 @@
                 <img id="photoModalImg" src="" class="max-h-[75vh] object-contain rounded">
             </div>
             <div class="p-3 bg-gray-50 border-t flex justify-end">
-                <button type="button" onclick="closePhotoModal()" class="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-lg transition">
+                <button type="button" onclick="closePhotoModal()" class="btn-colorful px-5 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white text-xs font-bold rounded-xl shadow-md transition border border-transparent">
                     Tutup
                 </button>
             </div>
@@ -314,22 +308,61 @@
                     document.getElementById('mPegawaiRole').innerText = data.role;
                     document.getElementById('mDate').innerText = data.date;
                     document.getElementById('mTimes').innerText = `${data.check_in_time} WIB - ${data.check_out_time} WIB`;
-                    document.getElementById('mActivity').innerText = data.monev_activity;
-                    document.getElementById('mObstacle').innerText = data.monev_obstacle;
+                    
+                    const totalCount = data.total_activities || (data.activities ? data.activities.length : 0);
+                    document.getElementById('mTotalActivities').innerText = `${totalCount} Kegiatan`;
 
-                    const photosContainer = document.getElementById('mPhotos');
-                    photosContainer.innerHTML = '';
+                    const container = document.getElementById('mActivitiesList');
+                    container.innerHTML = '';
 
-                    if (data.activity_photos && data.activity_photos.length > 0) {
-                        data.activity_photos.forEach(photoUrl => {
-                            const img = document.createElement('img');
-                            img.src = photoUrl;
-                            img.className = "w-full aspect-video object-cover rounded-lg border cursor-pointer hover:opacity-90 shadow-sm transition";
-                            img.onclick = () => openPhotoModal(photoUrl, 'Bukti Foto Kegiatan');
-                            photosContainer.appendChild(img);
+                    if (data.activities && data.activities.length > 0) {
+                        data.activities.forEach(act => {
+                            let photosHtml = '';
+                            if (act.photos && act.photos.length > 0) {
+                                photosHtml = `
+                                    <div class="pt-2">
+                                        <span class="font-semibold text-gray-600 text-xs block mb-1">Bukti Foto:</span>
+                                        <div class="flex flex-wrap gap-2">
+                                            ${act.photos.map(p => `
+                                                <img src="${p}" class="size-16 rounded-lg object-cover border-2 border-indigo-200 cursor-pointer hover:opacity-90 shadow-sm"
+                                                     onclick="openPhotoModal('${p}', 'Bukti Foto Kegiatan #${act.index}')">
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            const card = document.createElement('div');
+                            card.className = "bg-gray-50 rounded-xl p-3.5 border border-gray-200 text-xs space-y-1.5";
+                            card.innerHTML = `
+                                <div class="flex items-center justify-between pb-1 border-b border-gray-200">
+                                    <span class="font-bold px-2 py-0.5 rounded bg-indigo-600 text-white">Kegiatan #${act.index}</span>
+                                    <span class="text-gray-500 font-medium">Jam ${act.time} WIB</span>
+                                </div>
+                                <div class="text-gray-800">
+                                    <span class="font-bold text-gray-700">Uraian:</span>
+                                    <p class="mt-0.5 leading-relaxed">${act.activity_description}</p>
+                                </div>
+                                ${act.obstacle && act.obstacle !== 'Tidak ada kendala' ? `
+                                    <div class="text-amber-900 bg-amber-50/70 p-2 rounded border border-amber-200">
+                                        <span class="font-bold">Kendala:</span> ${act.obstacle}
+                                    </div>
+                                ` : ''}
+                                ${photosHtml}
+                            `;
+                            container.appendChild(card);
                         });
+                    } else if (data.monev_activity && data.monev_activity !== 'Belum ada uraian aktivitas.') {
+                        // Fallback legacy display
+                        const card = document.createElement('div');
+                        card.className = "bg-gray-50 rounded-xl p-3.5 border text-xs space-y-1.5";
+                        card.innerHTML = `
+                            <div class="text-gray-800"><span class="font-bold">Uraian:</span> ${data.monev_activity}</div>
+                            <div class="text-amber-900"><span class="font-bold">Kendala:</span> ${data.monev_obstacle}</div>
+                        `;
+                        container.appendChild(card);
                     } else {
-                        photosContainer.innerHTML = '<span class="text-xs text-gray-400 col-span-3">Tidak ada foto kegiatan yang diunggah.</span>';
+                        container.innerHTML = '<div class="text-center py-6 text-gray-400 text-xs">Belum ada kegiatan monev yang dicatat pada tanggal ini.</div>';
                     }
 
                     document.getElementById('monevModal').style.display = 'flex';
