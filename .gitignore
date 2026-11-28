@@ -1,4 +1,6 @@
 /storage/framework/*
+/storage/logs/*
+!/storage/logs/.gitignore
 /bootstrap/cache/config.php
 /.phpunit.cache
 /node_modules

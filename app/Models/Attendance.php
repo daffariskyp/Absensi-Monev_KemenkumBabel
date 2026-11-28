@@ -9,9 +9,12 @@ class Attendance extends Model
 {
     use HasFactory;
 
+    public const TIMEZONE = 'Asia/Jakarta';
+
     protected $fillable = [
         'user_id',
         'employee_id',
+        'shift',
         'date',
         'check_in_time',
         'check_in_photo',

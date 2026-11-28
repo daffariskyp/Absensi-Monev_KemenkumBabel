@@ -13,6 +13,9 @@ return new class extends Migration
     {
         Schema::table('employees', function (Blueprint $table) {
             $table->string('work_email')->after('full_name')->nullable(); // Menambahkan kolom work_email
+            if (Schema::getConnection()->getDriverName() === 'sqlite') {
+                $table->dropUnique(['email']);
+            }
             $table->dropColumn('email'); // Menghapus kolom email
         });
     }

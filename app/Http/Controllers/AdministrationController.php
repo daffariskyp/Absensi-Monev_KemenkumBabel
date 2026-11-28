@@ -8,7 +8,6 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use DateTime;
 use Carbon\Carbon;
 
 class AdministrationController extends Controller
@@ -68,7 +67,7 @@ class AdministrationController extends Controller
     public function index(Request $request)
     {
         $user = auth()->user();
-        $today = Carbon::today()->toDateString();
+        $today = Carbon::today(Attendance::TIMEZONE)->toDateString();
 
         // ALUR PEGAWAI NON-ASN: Langsung Form Pengajuan atau Halaman Tunggu Persetujuan
         if ($user->role !== 'admin') {
@@ -157,7 +156,7 @@ class AdministrationController extends Controller
             'categories' => self::getCategories(),
             'stats' => $stats,
             'activeLeavesToday' => $activeLeavesToday,
-            'todayFormatted' => Carbon::now()->locale('id')->translatedFormat('l, d F Y'),
+            'todayFormatted' => Carbon::now(Attendance::TIMEZONE)->locale('id')->translatedFormat('l, d F Y'),
         ]);
     }
 
@@ -182,9 +181,7 @@ class AdministrationController extends Controller
         try {
             DB::beginTransaction();
 
-            $startDate = new DateTime($validated['start_date']);
-            $endDate = new DateTime($validated['end_date']);
-            $lamaCuti = $startDate->diff($endDate)->days + 1;
+            $lamaCuti = $this->calculateWorkDays(auth()->user(), $validated['start_date'], $validated['end_date']);
 
             $attachmentPath = null;
             if ($request->hasFile('attachment')) {
@@ -256,9 +253,7 @@ class AdministrationController extends Controller
         try {
             DB::beginTransaction();
 
-            $startDate = new DateTime($validated['start_date']);
-            $endDate = new DateTime($validated['end_date']);
-            $lamaCuti = $startDate->diff($endDate)->days + 1;
+            $lamaCuti = $this->calculateWorkDays($administration->user, $validated['start_date'], $validated['end_date']);
 
             if ($request->hasFile('attachment')) {
                 if ($administration->attachment && Storage::disk('public')->exists($administration->attachment)) {
@@ -307,8 +302,10 @@ class AdministrationController extends Controller
             $end = Carbon::parse($administration->end_date);
             $statusAttendance = ($administration->leave_category === 'cuti_sakit') ? 'sakit' : 'izin';
 
+            $employee = $administration->user?->employee;
             for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
-                if ($date->isWeekend()) continue;
+                if ($employee && !$employee->isWorkDay($date)) continue;
+                if (!$employee && $date->isWeekend()) continue;
 
                 Attendance::updateOrCreate(
                     [
@@ -327,6 +324,31 @@ class AdministrationController extends Controller
 
         notify()->success('Pengajuan izin berhasil disetujui.', 'Disetujui');
         return redirect()->back();
+    }
+
+    /**
+     * Hitung jumlah hari kerja aktif dalam rentang tanggal pengajuan cuti.
+     */
+    private function calculateWorkDays($user, string $startDateStr, string $endDateStr): int
+    {
+        $start = Carbon::parse($startDateStr);
+        $end = Carbon::parse($endDateStr);
+        $workDays = 0;
+        $employee = $user?->employee;
+
+        for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
+            if ($employee) {
+                if ($employee->isWorkDay($date)) {
+                    $workDays++;
+                }
+            } else {
+                if (!$date->isWeekend()) {
+                    $workDays++;
+                }
+            }
+        }
+
+        return $workDays;
     }
 
     public function reject(Request $request, $id)

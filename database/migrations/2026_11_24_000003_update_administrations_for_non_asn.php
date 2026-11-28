@@ -3,7 +3,6 @@
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Facades\DB;
 
 return new class extends Migration
 {
@@ -27,13 +26,9 @@ return new class extends Migration
             }
         });
 
-        // Modify leave_category column to be varchar so custom non-asn categories can be stored safely
-        // In MySQL, we can alter the column or keep string
-        try {
-            DB::statement("ALTER TABLE administrations MODIFY COLUMN leave_category VARCHAR(100) NOT NULL");
-        } catch (\Exception $e) {
-            // SQLite or already string
-        }
+        Schema::table('administrations', function (Blueprint $table) {
+            $table->string('leave_category', 100)->change();
+        });
     }
 
     /**

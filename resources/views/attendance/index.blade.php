@@ -42,9 +42,15 @@
                 <div>
                     <h4 class="text-sm font-semibold text-gray-800">{{ $office->office_name }}</h4>
                     <p class="text-xs text-gray-500">
-                        Radius Toleransi: <span class="font-medium text-gray-700">{{ $office->radius_meters }} meter</span> | 
-                        Jam Masuk: <span class="font-medium text-gray-700">{{ substr($office->check_in_start, 0, 5) }} - {{ substr($office->check_in_end, 0, 5) }}</span> | 
-                        Jam Pulang: <span class="font-medium text-gray-700">&ge; {{ substr($office->check_out_start, 0, 5) }}</span>
+                        @if($isSatpam)
+                            Radius Toleransi: <span class="font-medium text-gray-700">{{ $office->radius_meters }} meter</span> |
+                            Shift Pagi: <span class="font-medium text-gray-700">{{ substr($office->satpam_pagi_in_start ?? '06:30', 0, 5) }} - {{ substr($office->satpam_pagi_out_start ?? '19:00', 0, 5) }}</span> |
+                            Shift Malam: <span class="font-medium text-gray-700">{{ substr($office->satpam_malam_in_start ?? '18:30', 0, 5) }} - {{ substr($office->satpam_malam_out_start ?? '07:00', 0, 5) }}</span>
+                        @else
+                            Radius Toleransi: <span class="font-medium text-gray-700">{{ $office->radius_meters }} meter</span> |
+                            Jam Masuk: <span class="font-medium text-gray-700">{{ substr($office->check_in_start, 0, 5) }} - {{ substr($office->check_in_end, 0, 5) }}</span> |
+                            Jam Pulang: <span class="font-medium text-gray-700">&ge; {{ substr($office->check_out_start, 0, 5) }}</span>
+                        @endif
                     </p>
                 </div>
             </div>
@@ -54,8 +60,36 @@
             </div>
         </div>
 
-        <!-- Status Presensi Hari Ini Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+        @if($isOvernight)
+            <div class="mb-6 bg-gradient-to-r from-amber-50 to-orange-50 border-l-4 border-amber-500 p-4 rounded-r-xl shadow-sm flex items-start gap-3">
+                <div class="p-2 bg-amber-100 text-amber-700 rounded-lg shrink-0 text-xl">
+                    🌙
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-amber-900">Melanjutkan Absen Pulang Shift Malam Kemarin</h4>
+                    <p class="text-xs text-amber-700 mt-0.5">
+                        Anda tercatat telah Absen Masuk pada <strong>Shift Malam</strong> tanggal <strong>{{ Carbon\Carbon::parse($attendance->date)->locale('id')->translatedFormat('d F Y') }}</strong> ({{ Carbon\Carbon::parse($attendance->check_in_time)->format('H:i') }} WIB). Silakan isi form <strong>Monev & Absen Pulang</strong> di bawah untuk menyelesaikan tugas jaga Anda.
+                    </p>
+                </div>
+            </div>
+        @elseif(!$isWorkDayToday && (!$attendance || !$attendance->check_in_time))
+            <div class="mb-6 bg-blue-50 border border-blue-200 rounded-xl p-4 shadow-sm flex items-start gap-3">
+                <div class="p-2 bg-blue-100 text-blue-700 rounded-lg shrink-0">
+                    <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-blue-900">Hari Ini Bukan Hari Kerja Terjadwal</h4>
+                    <p class="text-xs text-blue-700 mt-0.5">
+                        Hari ini ({{ Carbon\Carbon::now(\App\Models\Attendance::TIMEZONE)->locale('id')->translatedFormat('l') }}) adalah jadwal libur/off untuk posisi <strong>{{ $user->employee?->role?->name ?? 'Tenaga Non-ASN' }}</strong> (Jadwal Kerja: {{ $user->employee?->workDaysLabel() ?? 'Senin - Kamis' }}). Anda tidak terjadwal untuk masuk dinas hari ini.
+                    </p>
+                </div>
+            </div>
+        @endif
+
+        @if($isWorkDayToday || $attendance?->check_in_time)
+        <div class="grid grid-cols-1 {{ $attendance?->check_out_time ? 'md:grid-cols-2' : '' }} gap-6 mb-8">
             <!-- Box Absen Masuk -->
             <div class="bg-white border rounded-xl p-5 shadow-sm relative overflow-hidden">
                 <div class="flex items-center justify-between mb-4 border-b pb-3">
@@ -65,7 +99,14 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                             </svg>
                         </span>
-                        <h3 class="font-bold text-gray-800">1. Absen Masuk (Datang)</h3>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Absen Masuk</h3>
+                            @if($attendance && $attendance->shift)
+                                <span class="inline-flex items-center gap-1 text-[11px] font-bold {{ $attendance->shift === 'pagi' ? 'text-amber-600' : 'text-indigo-600' }}">
+                                    {{ $attendance->shift === 'pagi' ? '☀️ Shift Pagi' : '🌙 Shift Malam' }}
+                                </span>
+                            @endif
+                        </div>
                     </div>
                     @if($attendance && $attendance->check_in_time)
                         <span class="px-2.5 py-1 rounded-full text-xs font-semibold {{ $attendance->check_in_status === 'tepat_waktu' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
@@ -79,13 +120,18 @@
                 @if($attendance && $attendance->check_in_time)
                     <div class="flex items-center gap-4">
                         @if($attendance->check_in_photo)
-                            <img src="{{ asset('storage/' . $attendance->check_in_photo) }}" alt="Foto Masuk" 
+                            <img src="{{ asset('storage/' . $attendance->check_in_photo) }}" alt="Foto Masuk"
                                 class="size-24 rounded-lg object-cover border-2 border-green-500 shadow-sm cursor-pointer hover:opacity-90"
                                 onclick="openPhotoModal(this.src, 'Foto Wajah Absen Masuk')">
                         @endif
                         <div class="space-y-1 text-sm">
                             <div class="text-xs text-gray-500">Waktu Masuk:</div>
                             <div class="text-xl font-bold text-gray-800">{{ Carbon\Carbon::parse($attendance->check_in_time)->format('H:i:s') }} WIB</div>
+                            @if($attendance->shift)
+                                <div class="text-xs font-semibold text-gray-700">
+                                    Shift: <span class="px-2 py-0.5 rounded text-[11px] {{ $attendance->shift === 'pagi' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800' }}">{{ $attendance->shift === 'pagi' ? '☀️ Shift Pagi' : '🌙 Shift Malam' }}</span>
+                                </div>
+                            @endif
                             <div class="text-xs text-gray-500">
                                 Jarak ke Kantor: <span class="font-medium text-gray-700">{{ $attendance->check_in_distance ?? 0 }} meter</span>
                             </div>
@@ -98,72 +144,118 @@
                 @else
                     <!-- Form Absen Masuk Kamera -->
                     <div class="space-y-4">
-                        <p class="text-xs text-gray-600">Posisikan wajah Anda tegak di depan kamera. Ambil foto menggunakan kamera langsung atau live streaming.</p>
-                        
-                        <!-- Camera Area -->
-                        <div class="relative bg-gray-900 rounded-xl overflow-hidden aspect-video flex items-center justify-center border-2 border-gray-300">
-                            <video id="videoCheckIn" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
-                            <canvas id="canvasCheckIn" class="hidden"></canvas>
-                            <img id="previewCheckIn" class="hidden w-full h-full object-cover" />
-                            
-                            <!-- Initial Placeholder -->
-                            <div id="placeholderCheckIn" class="text-center p-4">
-                                <svg class="size-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
-                                </svg>
-                                <span class="text-xs text-gray-300 block">Kamera belum aktif. Klik tombol di bawah untuk mengambil foto.</span>
+                        @if($isSatpam)
+                            <!-- Select Card Pilihan Shift (Khusus Satpam) -->
+                            <div class="bg-gradient-to-br from-indigo-50/80 to-blue-50/80 border border-indigo-200 rounded-xl p-3.5 shadow-sm">
+                                <label class="block text-xs font-bold text-indigo-900 mb-2 uppercase tracking-wider flex items-center gap-1.5">
+                                    <svg class="size-4 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                                    </svg>
+                                    Pilih Shift Tugas Jaga Hari Ini <span class="text-rose-500">*</span>
+                                </label>
+
+                                <div class="grid grid-cols-2 gap-2.5">
+                                    <!-- Option Shift Pagi -->
+                                    <label class="relative flex flex-col p-2.5 border-2 border-gray-200 bg-gray-50/50 rounded-xl cursor-pointer transition has-[:checked]:border-indigo-600 has-[:checked]:bg-white has-[:checked]:shadow-sm focus-within:ring-2 focus-within:ring-indigo-500">
+                                        <input type="radio" name="shift_select" autocomplete="off" value="pagi" class="sr-only" onchange="selectShift(this.value)">
+                                        <div class="flex items-center gap-1.5 mb-0.5">
+                                            <span class="text-base">☀️</span>
+                                            <span class="text-xs font-bold text-gray-900">Shift Pagi</span>
+                                        </div>
+                                        <span class="text-[10px] text-gray-500">{{ substr($office->satpam_pagi_in_start ?? '06:30', 0, 5) }} - {{ substr($office->satpam_pagi_out_start ?? '19:00', 0, 5) }} WIB</span>
+                                    </label>
+
+                                    <!-- Option Shift Malam -->
+                                    <label class="relative flex flex-col p-2.5 border-2 border-gray-200 bg-gray-50/50 rounded-xl cursor-pointer transition has-[:checked]:border-indigo-600 has-[:checked]:bg-white has-[:checked]:shadow-sm focus-within:ring-2 focus-within:ring-indigo-500">
+                                        <input type="radio" name="shift_select" autocomplete="off" value="malam" class="sr-only" onchange="selectShift(this.value)">
+                                        <div class="flex items-center gap-1.5 mb-0.5">
+                                            <span class="text-base">🌙</span>
+                                            <span class="text-xs font-bold text-gray-900">Shift Malam</span>
+                                        </div>
+                                        <span class="text-[10px] text-gray-500">{{ substr($office->satpam_malam_in_start ?? '18:30', 0, 5) }} - {{ substr($office->satpam_malam_out_start ?? '07:00', 0, 5) }} WIB</span>
+                                    </label>
+                                </div>
+                            </div>
+                        @endif
+
+                        @if($isSatpam)
+                            <p id="shiftPrompt" class="text-sm text-indigo-800">
+                                Silakan pilih Shift Pagi atau Shift Malam sebelum mengambil foto absen masuk.
+                            </p>
+                        @endif
+
+                        <div id="checkInActions" class="space-y-4 {{ $isSatpam ? 'hidden' : '' }}">
+                            <p class="text-xs text-gray-600">Posisikan wajah Anda tegak di depan kamera. Ambil foto menggunakan kamera langsung atau live streaming.</p>
+
+                            <!-- Camera Area -->
+                            <div class="relative bg-gray-900 rounded-xl overflow-hidden aspect-video flex items-center justify-center border-2 border-gray-300">
+                                <video id="videoCheckIn" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
+                                <canvas id="canvasCheckIn" class="hidden"></canvas>
+                                <img id="previewCheckIn" class="hidden w-full h-full object-cover" />
+
+                                <!-- Initial Placeholder -->
+                                <div id="placeholderCheckIn" class="text-center p-4">
+                                    <svg class="size-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                    </svg>
+                                    <span class="text-xs text-gray-300 block">Kamera belum aktif. Klik tombol di bawah untuk mengambil foto.</span>
+                                </div>
+
+                                <!-- Camera Frame Guide -->
+                                <div id="guideCheckIn" class="hidden absolute inset-0 border-2 border-dashed border-white/60 m-6 rounded-2xl pointer-events-none flex items-center justify-center">
+                                    <span class="text-[11px] text-white/90 bg-black/50 px-2 py-0.5 rounded">Posisikan Wajah di Sini</span>
+                                </div>
                             </div>
 
-                            <!-- Camera Frame Guide -->
-                            <div id="guideCheckIn" class="hidden absolute inset-0 border-2 border-dashed border-white/60 m-6 rounded-2xl pointer-events-none flex items-center justify-center">
-                                <span class="text-[11px] text-white/90 bg-black/50 px-2 py-0.5 rounded">Posisikan Wajah di Sini</span>
-                            </div>
-                        </div>
+                            <!-- Camera Action Buttons -->
+                            <div class="flex flex-wrap items-center justify-between gap-2">
+                                <!-- Direct Hardware/Mobile Camera Trigger (WORKS EVERYWHERE!) -->
+                                <input type="file" id="directCaptureIn" accept="image/*" capture="user" class="hidden"
+                                    onchange="handleDirectCapture(this, 'previewCheckIn', 'placeholderCheckIn', 'photoInputIn', 'btnSubmitIn', 'videoCheckIn', 'guideCheckIn')">
 
-                        <!-- Camera Action Buttons -->
-                        <div class="flex flex-wrap items-center justify-between gap-2">
-                            <!-- Direct Hardware/Mobile Camera Trigger (WORKS EVERYWHERE!) -->
-                            <input type="file" id="directCaptureIn" accept="image/*" capture="user" class="hidden" 
-                                onchange="handleDirectCapture(this, 'previewCheckIn', 'placeholderCheckIn', 'photoInputIn', 'btnSubmitIn', 'videoCheckIn', 'guideCheckIn')">
-                            
-                            <button type="button" onclick="document.getElementById('directCaptureIn').click()" 
-                                class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow flex items-center gap-1.5 transition">
-                                <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
-                                Buka Kamera HP / Perangkat
-                            </button>
-
-                            <div class="flex items-center gap-1">
-                                <button type="button" id="btnStartCameraIn" onclick="initCamera('videoCheckIn', 'placeholderCheckIn', 'guideCheckIn', 'previewCheckIn', 'directCaptureIn')" class="px-2.5 py-2 bg-gray-100 hover:bg-gray-200 border rounded-lg text-xs font-medium text-gray-700 flex items-center gap-1">
-                                    <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
-                                    Live Stream
+                                <button type="button" onclick="document.getElementById('directCaptureIn').click()"
+                                    class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow flex items-center gap-1.5 transition">
+                                    <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                                    Buka Kamera HP / Perangkat
                                 </button>
-                                <button type="button" id="btnCaptureIn" onclick="takeSnapshot('videoCheckIn', 'canvasCheckIn', 'previewCheckIn', 'photoInputIn', 'btnSubmitIn', 'guideCheckIn')" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1">
-                                    Ambil Foto
+
+                                <div class="flex items-center gap-1">
+                                    <button type="button" id="btnStartCameraIn" onclick="initCamera('videoCheckIn', 'placeholderCheckIn', 'guideCheckIn', 'previewCheckIn', 'directCaptureIn')" class="px-2.5 py-2 bg-gray-100 hover:bg-gray-200 border rounded-lg text-xs font-medium text-gray-700 flex items-center gap-1">
+                                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" /></svg>
+                                        Live Stream
+                                    </button>
+                                    <button type="button" id="btnCaptureIn" onclick="takeSnapshot('videoCheckIn', 'canvasCheckIn', 'previewCheckIn', 'photoInputIn', 'btnSubmitIn', 'guideCheckIn')" class="px-3 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg shadow flex items-center gap-1">
+                                        Ambil Foto
+                                    </button>
+                                </div>
+                            </div>
+
+                            <form action="{{ route('attendance.checkin') }}" method="POST" id="formCheckIn">
+                                @csrf
+                                <input type="hidden" name="latitude" id="latIn">
+                                <input type="hidden" name="longitude" id="lngIn">
+                                <input type="hidden" name="photo" id="photoInputIn">
+                                @if($isSatpam)
+                                    <input type="hidden" name="shift" id="shiftInput" value="">
+                                @endif
+
+                                <div id="photoNoticeIn" class="hidden mb-3 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg p-2.5 flex items-center gap-2">
+                                    <svg class="size-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    <span>Foto wajah berhasil diambil! Klik tombol <strong>Kirim Absen Masuk</strong> di bawah ini untuk menyelesaikan absensi.</span>
+                                </div>
+
+                                <button type="submit" id="btnSubmitIn" disabled class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-bold rounded-lg shadow transition flex items-center justify-center gap-2">
+                                    <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
+                                    Kirim Absen Masuk
                                 </button>
-                            </div>
+                            </form>
                         </div>
-
-                        <form action="{{ route('attendance.checkin') }}" method="POST" id="formCheckIn">
-                            @csrf
-                            <input type="hidden" name="latitude" id="latIn">
-                            <input type="hidden" name="longitude" id="lngIn">
-                            <input type="hidden" name="photo" id="photoInputIn">
-
-                            <div id="photoNoticeIn" class="hidden mb-3 text-xs bg-emerald-50 text-emerald-800 border border-emerald-200 rounded-lg p-2.5 flex items-center gap-2">
-                                <svg class="size-4 shrink-0 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                <span>Foto wajah berhasil diambil! Klik tombol <strong>Kirim Absen Masuk</strong> di bawah ini untuk menyelesaikan absensi.</span>
-                            </div>
-
-                            <button type="submit" id="btnSubmitIn" disabled class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white text-sm font-bold rounded-lg shadow transition flex items-center justify-center gap-2">
-                                <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
-                                Kirim Absen Masuk
-                            </button>
-                        </form>
                     </div>
                 @endif
             </div>
 
+            @if($attendance?->check_out_time)
             <!-- Box Status Absen Pulang & Monev Summary -->
             <div class="bg-white border rounded-xl p-5 shadow-sm">
                 <div class="flex items-center justify-between mb-4 border-b pb-3">
@@ -173,28 +265,33 @@
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1" />
                             </svg>
                         </span>
-                        <h3 class="font-bold text-gray-800">2. Absen Pulang & Monev</h3>
+                        <div>
+                            <h3 class="font-bold text-gray-800">Absen Pulang & Monev</h3>
+                            @if($attendance && $attendance->shift)
+                                <span class="inline-flex items-center gap-1 text-[11px] font-bold {{ $attendance->shift === 'pagi' ? 'text-amber-600' : 'text-indigo-600' }}">
+                                    {{ $attendance->shift === 'pagi' ? '☀️ Shift Pagi' : '🌙 Shift Malam' }}
+                                </span>
+                            @endif
+                        </div>
                     </div>
-                    @if($attendance && $attendance->check_out_time)
-                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">Sudah Pulang</span>
-                    @elseif($attendance && $attendance->check_in_time)
-                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">Sedang Bekerja</span>
-                    @else
-                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-600">Menunggu Masuk</span>
-                    @endif
+                    <span class="px-2 py-1 text-xs font-bold rounded-lg bg-emerald-50 text-emerald-700">Sudah Pulang</span>
                 </div>
 
-                @if($attendance && $attendance->check_out_time)
                     <div class="space-y-4">
                         <div class="flex items-center gap-4">
                             @if($attendance->check_out_photo)
-                                <img src="{{ asset('storage/' . $attendance->check_out_photo) }}" alt="Foto Pulang" 
+                                <img src="{{ asset('storage/' . $attendance->check_out_photo) }}" alt="Foto Pulang"
                                     class="size-20 rounded-lg object-cover border-2 border-indigo-500 shadow-sm cursor-pointer hover:opacity-90"
                                     onclick="openPhotoModal(this.src, 'Foto Wajah Absen Pulang')">
                             @endif
                             <div class="space-y-0.5 text-sm">
                                 <div class="text-xs text-gray-500">Waktu Pulang:</div>
                                 <div class="text-xl font-bold text-gray-800">{{ Carbon\Carbon::parse($attendance->check_out_time)->format('H:i:s') }} WIB</div>
+                                @if($attendance->shift)
+                                    <div class="text-xs font-semibold text-gray-700">
+                                        Shift: <span class="px-2 py-0.5 rounded text-[11px] {{ $attendance->shift === 'pagi' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800' }}">{{ $attendance->shift === 'pagi' ? '☀️ Shift Pagi' : '🌙 Shift Malam' }}</span>
+                                    </div>
+                                @endif
                                 <div class="text-xs text-gray-500">Jarak saat Pulang: {{ $attendance->check_out_distance ?? 0 }} meter</div>
                             </div>
                         </div>
@@ -214,7 +311,7 @@
                                     <span class="font-semibold text-gray-700 block mb-1">Bukti Foto Kegiatan ({{ count($attendance->activity_photos) }} Foto):</span>
                                     <div class="flex gap-2">
                                         @foreach($attendance->activity_photos as $p)
-                                            <img src="{{ asset('storage/' . $p) }}" 
+                                            <img src="{{ asset('storage/' . $p) }}"
                                                 class="size-16 rounded object-cover border cursor-pointer hover:scale-105 transition"
                                                 onclick="openPhotoModal(this.src, 'Bukti Foto Kegiatan')">
                                         @endforeach
@@ -223,23 +320,10 @@
                             @endif
                         </div>
                     </div>
-                @else
-                    <div class="text-center py-8 text-gray-500 text-sm">
-                        <svg class="size-12 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                        </svg>
-                        <p class="font-medium text-gray-700">Form Absen Pulang & Monev</p>
-                        <p class="text-xs text-gray-400 mt-1">
-                            @if(!$attendance || !$attendance->check_in_time)
-                                Anda harus melakukan absen masuk terlebih dahulu sebelum dapat absen pulang.
-                            @else
-                                Form pengisian monev dan absen pulang tersedia di bawah ini.
-                            @endif
-                        </p>
-                    </div>
-                @endif
             </div>
+            @endif
         </div>
+        @endif
 
         <!-- Section Form Monev & Absen Pulang (Hanya jika sudah absen masuk & belum absen pulang) -->
         @if($attendance && $attendance->check_in_time && !$attendance->check_out_time)
@@ -252,6 +336,15 @@
                     </div>
                     <div>
                         <h2 class="text-xl font-bold text-gray-800">Form Monev Aktivitas Harian & Absen Pulang</h2>
+                        @if($isOvernight)
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300 my-1">
+                                <span>🌙 Shift Malam Lintas Hari (Tugas Tanggal {{ Carbon\Carbon::parse($attendance->date)->locale('id')->translatedFormat('d F Y') }})</span>
+                            </div>
+                        @elseif($attendance && $attendance->shift)
+                            <div class="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold {{ $attendance->shift === 'pagi' ? 'bg-amber-100 text-amber-800' : 'bg-indigo-100 text-indigo-800' }} my-1">
+                                <span>{{ $attendance->shift === 'pagi' ? '☀️ Shift Pagi' : '🌙 Shift Malam' }}</span>
+                            </div>
+                        @endif
                         <p class="text-xs text-gray-500">Sebelum absen pulang, pegawai Non-ASN diwajibkan mengisi uraian aktivitas, kendala minimal 100 karakter, bukti kegiatan maks 3 foto, serta foto wajah di titik lokasi kantor.</p>
                     </div>
                 </div>
@@ -266,12 +359,12 @@
                         <!-- Left Side: Camera Face Capture for Checkout -->
                         <div class="space-y-3">
                             <label class="block text-sm font-semibold text-gray-700">1. Foto Wajah Saat Pulang <span class="text-red-500">*</span></label>
-                            
+
                             <div class="relative bg-gray-900 rounded-xl overflow-hidden aspect-video flex items-center justify-center border-2 border-gray-300">
                                 <video id="videoCheckOut" autoplay playsinline muted class="w-full h-full object-cover hidden"></video>
                                 <canvas id="canvasCheckOut" class="hidden"></canvas>
                                 <img id="previewCheckOut" class="hidden w-full h-full object-cover" />
-                                
+
                                 <div id="placeholderCheckOut" class="text-center p-4">
                                     <svg class="size-12 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
@@ -286,10 +379,10 @@
                             </div>
 
                             <div class="flex flex-wrap items-center justify-between gap-2">
-                                <input type="file" id="directCaptureOut" accept="image/*" capture="user" class="hidden" 
+                                <input type="file" id="directCaptureOut" accept="image/*" capture="user" class="hidden"
                                     onchange="handleDirectCapture(this, 'previewCheckOut', 'placeholderCheckOut', 'photoInputOut', null, 'videoCheckOut', 'guideCheckOut')">
-                                
-                                <button type="button" onclick="document.getElementById('directCaptureOut').click()" 
+
+                                <button type="button" onclick="document.getElementById('directCaptureOut').click()"
                                     class="px-3.5 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg text-xs font-bold shadow flex items-center gap-1.5 transition">
                                     <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                     Buka Kamera HP / Perangkat
@@ -353,7 +446,7 @@
                                     onchange="previewActivityPhotos(this)"
                                     class="w-full border border-gray-300 rounded-lg p-2 text-xs bg-gray-50 focus:outline-none file:mr-3 file:py-1 file:px-3 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100">
                                 <p class="text-[11px] text-gray-500 mt-1">Dapat memilih 1 hingga 3 foto hasil kerja/dokumentasi lapangan (format JPG, PNG, max 3MB per foto).</p>
-                                
+
                                 <!-- Preview Container -->
                                 <div id="activityPhotosPreview" class="flex gap-2 mt-2"></div>
                                 @error('activity_photos')
@@ -670,11 +763,31 @@
             }
         });
 
+        function selectShift(shift) {
+            document.getElementById('shiftInput').value = shift;
+            document.getElementById('checkInActions').classList.remove('hidden');
+            document.getElementById('shiftPrompt').classList.add('hidden');
+        }
+
         // CheckIn Form Submission via AJAX with SweetAlert2
         const formCheckIn = document.getElementById('formCheckIn');
         if (formCheckIn) {
             formCheckIn.addEventListener('submit', async function(e) {
                 e.preventDefault();
+
+                const shiftInput = document.getElementById('shiftInput');
+                if (shiftInput && !shiftInput.value) {
+                    if (window.Swal) {
+                        Swal.fire({
+                            icon: 'warning',
+                            title: 'Pilih Shift Dinas',
+                            text: 'Silakan pilih Shift Pagi atau Shift Malam terlebih dahulu!'
+                        });
+                    } else {
+                        alert('Silakan pilih Shift Pagi atau Shift Malam terlebih dahulu!');
+                    }
+                    return false;
+                }
 
                 const photoInput = document.getElementById('photoInputIn').value;
                 const lat = document.getElementById('latIn').value;

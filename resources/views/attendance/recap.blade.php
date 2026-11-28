@@ -150,6 +150,11 @@
                                             @endif
                                             <div class="text-xs text-left">
                                                 <div class="font-bold text-gray-800">{{ Carbon\Carbon::parse($att->check_in_time)->format('H:i') }} WIB</div>
+                                                @if($att->shift)
+                                                    <div class="text-[10px] font-semibold {{ $att->shift === 'malam' ? 'text-indigo-600' : 'text-amber-600' }}">
+                                                        {{ $att->shift === 'malam' ? '🌙 Malam' : '☀️ Pagi' }}
+                                                    </div>
+                                                @endif
                                                 <div class="text-[10px] {{ $att->check_in_status === 'tepat_waktu' ? 'text-emerald-600 font-semibold' : 'text-amber-600 font-semibold' }}">
                                                     {{ $att->check_in_status === 'tepat_waktu' ? 'Tepat Waktu' : 'Terlambat' }}
                                                 </div>

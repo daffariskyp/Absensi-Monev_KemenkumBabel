@@ -71,6 +71,49 @@
                     </div>
                 </div>
 
+                <div class="pt-4 border-t">
+                    <h3 class="text-sm font-bold text-gray-800">Jam Shift Khusus Satpam</h3>
+                    <p class="text-xs text-gray-500 mb-3">Dipakai hanya untuk pegawai dengan role Satpam. Shift malam melintasi hari (pulang keesokan harinya).</p>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">☀️ Pagi - Mulai Absen Masuk:</label>
+                            <input type="time" name="satpam_pagi_in_start" value="{{ old('satpam_pagi_in_start', $office->satpam_pagi_in_start ?? '06:30:00') }}"
+                                class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">☀️ Pagi - Batas Tepat Waktu:</label>
+                            <input type="time" name="satpam_pagi_in_end" value="{{ old('satpam_pagi_in_end', $office->satpam_pagi_in_end ?? '08:00:00') }}"
+                                class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">☀️ Pagi - Mulai Absen Pulang:</label>
+                            <input type="time" name="satpam_pagi_out_start" value="{{ old('satpam_pagi_out_start', $office->satpam_pagi_out_start ?? '19:00:00') }}"
+                                class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">🌙 Malam - Mulai Absen Masuk:</label>
+                            <input type="time" name="satpam_malam_in_start" value="{{ old('satpam_malam_in_start', $office->satpam_malam_in_start ?? '18:30:00') }}"
+                                class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">🌙 Malam - Batas Tepat Waktu:</label>
+                            <input type="time" name="satpam_malam_in_end" value="{{ old('satpam_malam_in_end', $office->satpam_malam_in_end ?? '20:00:00') }}"
+                                class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-gray-700 mb-1">🌙 Malam - Mulai Absen Pulang (besok):</label>
+                            <input type="time" name="satpam_malam_out_start" value="{{ old('satpam_malam_out_start', $office->satpam_malam_out_start ?? '07:00:00') }}"
+                                class="w-full border border-gray-300 rounded-lg p-2 text-sm focus:outline-none">
+                        </div>
+                    </div>
+                    @error('satpam_pagi_in_start') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                    @error('satpam_malam_in_start') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
+                </div>
+
                 <div class="pt-6 border-t flex justify-end gap-3">
                     <a href="{{ route('attendance.index') }}" class="px-5 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-100 font-medium">
                         Batal

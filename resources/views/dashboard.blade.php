@@ -24,7 +24,7 @@
         </div>
 
         <!-- Metric Stat Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
             <!-- Total Karyawan -->
             <div class="bg-white border rounded-2xl p-5 shadow-sm">
                 <div class="flex items-center justify-between text-gray-500 text-xs font-bold uppercase tracking-wider">
@@ -72,6 +72,18 @@
                 <div class="text-3xl font-extrabold text-rose-700 mt-2">{{ $stats['total_tanpa_keterangan'] }}</div>
                 <div class="text-xs text-rose-600 mt-1">Belum Hadir / Belum Ada Data</div>
             </div>
+
+            <!-- Libur Terjadwal (Off Dinas) -->
+            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
+                <div class="flex items-center justify-between text-slate-700 text-xs font-bold uppercase tracking-wider">
+                    <span>Libur Terjadwal</span>
+                    <span class="p-2 rounded-xl bg-slate-100 text-slate-600">
+                        <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                    </span>
+                </div>
+                <div class="text-3xl font-extrabold text-slate-700 mt-2">{{ $stats['total_libur_terjadwal'] ?? 0 }}</div>
+                <div class="text-xs text-slate-500 mt-1">Off Dinas Sesuai Role</div>
+            </div>
         </div>
 
         <!-- Filter Tab Buttons -->
@@ -101,6 +113,13 @@
                 <span class="size-2 rounded-full bg-rose-500"></span>
                 <span>Tanpa Keterangan (Alpha)</span>
                 <span class="px-2 py-0.5 rounded-full text-[10px] bg-rose-100 text-rose-800">{{ $stats['total_tanpa_keterangan'] }}</span>
+            </button>
+
+            <button type="button" onclick="switchTab('tab-libur')" id="btn-tab-libur"
+                class="tab-btn px-5 py-2.5 rounded-xl font-bold text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center gap-2">
+                <span class="size-2 rounded-full bg-slate-500"></span>
+                <span>Libur Terjadwal (Off Dinas)</span>
+                <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-800">{{ $stats['total_libur_terjadwal'] ?? 0 }}</span>
             </button>
         </div>
 
@@ -140,6 +159,11 @@
                                     </td>
                                     <td class="py-3.5 px-4 text-center font-semibold text-gray-800">
                                         {{ substr($item['attendance']->check_in_time, 0, 5) }} WIB
+                                        @if($item['attendance']->shift)
+                                            <div class="text-[10px] font-bold mt-0.5 {{ $item['attendance']->shift === 'malam' ? 'text-indigo-600' : 'text-amber-600' }}">
+                                                {{ $item['attendance']->shift === 'malam' ? '🌙 Shift Malam' : '☀️ Shift Pagi' }}{{ !empty($item['is_overnight']) ? ' (lintas hari)' : '' }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="py-3.5 px-4 text-center text-gray-600">
                                         {{ $item['attendance']->check_out_time ? substr($item['attendance']->check_out_time, 0, 5) . ' WIB' : 'Belum Pulang' }}
@@ -208,6 +232,27 @@
                                     </td>
                                 </tr>
                             @endforeach
+
+                            {{-- Libur Terjadwal (Off Dinas) --}}
+                            @foreach($listLiburTerjadwal as $item)
+                                <tr class="bg-slate-50/60">
+                                    <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
+                                    <td class="py-3.5 px-4">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                                            {{ $item['employee']->role?->name }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">
+                                            Libur Terjadwal
+                                        </span>
+                                    </td>
+                                    <td colspan="2" class="py-3.5 px-4 text-center text-xs text-slate-500 italic">
+                                        Off dinas (hari kerja: {{ $item['employee']->workDaysLabel() }})
+                                    </td>
+                                    <td class="py-3.5 px-4 text-xs text-gray-400">-</td>
+                                </tr>
+                            @endforeach
                         </tbody>
                     </table>
                 </div>
@@ -241,6 +286,11 @@
                                     <td class="py-3.5 px-4 text-xs font-semibold text-gray-600">{{ $item['employee']->role?->name }}</td>
                                     <td class="py-3.5 px-4 text-center font-bold text-gray-800">
                                         {{ substr($item['attendance']->check_in_time, 0, 5) }} WIB
+                                        @if($item['attendance']->shift)
+                                            <div class="text-[10px] font-bold mt-0.5 {{ $item['attendance']->shift === 'malam' ? 'text-indigo-600' : 'text-amber-600' }}">
+                                                {{ $item['attendance']->shift === 'malam' ? '🌙 Shift Malam' : '☀️ Shift Pagi' }}{{ !empty($item['is_overnight']) ? ' (lintas hari)' : '' }}
+                                            </div>
+                                        @endif
                                     </td>
                                     <td class="py-3.5 px-4 text-center">
                                         <span class="px-2.5 py-1 rounded-full text-xs font-bold {{ $item['attendance']->check_in_status === 'tepat_waktu' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
@@ -373,6 +423,49 @@
                             @empty
                                 <tr>
                                     <td colspan="6" class="py-8 text-center text-emerald-600 font-bold text-xs">Semua pegawai telah hadir atau memiliki keterangan izin resmi hari ini!</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tab 5: Libur Terjadwal (Off Dinas) -->
+        <div id="tab-libur" class="tab-pane hidden">
+            <div class="bg-white border rounded-2xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-bold text-slate-800 text-sm">Daftar Pegawai yang Libur Terjadwal Hari Ini</h3>
+                        <p class="text-xs text-slate-500">Pegawai Non-ASN dengan hari kerja Senin - Kamis libur setiap Jumat. Satpam tetap masuk pada hari Jumat.</p>
+                    </div>
+                    <span class="text-xs font-bold text-slate-700 bg-slate-200 px-3 py-1 rounded-full">{{ count($listLiburTerjadwal) }} Pegawai</span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full border-collapse text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-bold">
+                            <tr>
+                                <th class="py-3 px-4">Pegawai</th>
+                                <th class="py-3 px-4">Role / Jabatan</th>
+                                <th class="py-3 px-4 text-center">Hari Kerja Wajib</th>
+                                <th class="py-3 px-4 text-center">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @forelse($listLiburTerjadwal as $item)
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
+                                    <td class="py-3.5 px-4 text-xs font-semibold text-gray-700">{{ $item['employee']->role?->name }}</td>
+                                    <td class="py-3.5 px-4 text-xs text-center text-gray-600">{{ $item['employee']->workDaysLabel() }}</td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">
+                                            Libur Terjadwal (Off Dinas)
+                                        </span>
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="4" class="py-8 text-center text-gray-400 text-xs">Tidak ada pegawai yang libur terjadwal hari ini.</td>
                                 </tr>
                             @endforelse
                         </tbody>

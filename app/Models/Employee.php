@@ -55,6 +55,54 @@ class Employee extends Model
         return $this->hasMany(Administration::class, 'user_id');
     }
 
+    /**
+     * Cek apakah tanggal tertentu adalah hari kerja untuk karyawan ini.
+     * Satpam: Senin - Jumat (5 hari kerja).
+     * Non-ASN Lain: Senin - Kamis (4 hari kerja).
+     */
+    public function isWorkDay(\Carbon\Carbon $date): bool
+    {
+        $dayOfWeek = $date->dayOfWeek; // 0 = Minggu, 1 = Senin, ..., 5 = Jumat, 6 = Sabtu
 
-    
+        if ($this->isSatpam()) {
+            return in_array($dayOfWeek, [
+                \Carbon\Carbon::MONDAY,
+                \Carbon\Carbon::TUESDAY,
+                \Carbon\Carbon::WEDNESDAY,
+                \Carbon\Carbon::THURSDAY,
+                \Carbon\Carbon::FRIDAY,
+            ], true);
+        }
+
+        return in_array($dayOfWeek, [
+            \Carbon\Carbon::MONDAY,
+            \Carbon\Carbon::TUESDAY,
+            \Carbon\Carbon::WEDNESDAY,
+            \Carbon\Carbon::THURSDAY,
+        ], true);
+    }
+
+    /**
+     * Label hari kerja wajib untuk karyawan.
+     */
+    public function workDaysLabel(): string
+    {
+        return $this->isSatpam() ? 'Senin - Jumat' : 'Senin - Kamis';
+    }
+
+    /**
+     * Apakah karyawan ini memiliki role Satpam.
+     */
+    public function isSatpam(): bool
+    {
+        if ($this->relationLoaded('role')) {
+            return $this->getRelation('role')?->name === 'Satpam';
+        }
+
+        if (empty($this->role_id)) {
+            return false;
+        }
+
+        return $this->role?->name === 'Satpam';
+    }
 }

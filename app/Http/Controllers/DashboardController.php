@@ -26,7 +26,9 @@ class DashboardController extends Controller
             return redirect()->route('attendance.index');
         }
 
-        $today = Carbon::today()->toDateString();
+        $today = Carbon::today(Attendance::TIMEZONE)->toDateString();
+        $todayCarbon = Carbon::today(Attendance::TIMEZONE);
+        $yesterday = Carbon::yesterday(Attendance::TIMEZONE)->toDateString();
         $office = OfficeSetting::getActive();
 
         // Ambil semua pegawai Non-ASN
@@ -38,6 +40,13 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('user_id');
 
+        // Ambil data Satpam shift malam kemarin yang sedang bertugas / pulang hari ini (lintas hari)
+        $yesterdayNightAttendances = Attendance::with(['user.employee.role'])
+            ->whereDate('date', $yesterday)
+            ->where('shift', 'malam')
+            ->get()
+            ->keyBy('user_id');
+
         // Ambil data izin/cuti yang disetujui dan aktif hari ini
         $leavesToday = Administration::with(['user.employee.role'])
             ->where('status', 'approved')
@@ -46,15 +55,23 @@ class DashboardController extends Controller
             ->get()
             ->keyBy('user_id');
 
-        // Klasifikasikan setiap karyawan: Masuk, Izin, atau Tanpa Keterangan (Alpha)
+        // Klasifikasikan setiap karyawan: Masuk, Izin, Libur Terjadwal, atau Tanpa Keterangan (Alpha)
         $listMasuk = [];
         $listIzin = [];
+        $listLiburTerjadwal = [];
         $listTanpaKeterangan = [];
 
         foreach ($employees as $emp) {
             $userId = $emp->user_id;
             $att = $attendancesToday->get($userId);
             $leave = $leavesToday->get($userId);
+            $isOvernight = false;
+
+            // Jika Satpam dan ada record shift malam kemarin yang aktif
+            if (!$att && $emp->isSatpam() && $yesterdayNightAttendances->has($userId)) {
+                $att = $yesterdayNightAttendances->get($userId);
+                $isOvernight = true;
+            }
 
             if ($att && $att->check_in_time) {
                 // Pegawai Hadir / Masuk
@@ -62,6 +79,7 @@ class DashboardController extends Controller
                     'employee' => $emp,
                     'attendance' => $att,
                     'leave' => null,
+                    'is_overnight' => $isOvernight,
                     'status_label' => $att->check_in_status === 'tepat_waktu' ? 'Tepat Waktu' : 'Terlambat',
                 ];
             } elseif ($leave || ($att && in_array($att->status, ['izin', 'sakit']))) {
@@ -74,8 +92,16 @@ class DashboardController extends Controller
                     'reason' => $leave ? $leave->description : ($att ? $att->notes : 'Izin'),
                     'attachment' => $leave ? $leave->attachment : null,
                 ];
+            } elseif (!$emp->isWorkDay($todayCarbon)) {
+                // Pegawai Libur Terjadwal (misal Driver / Kebersihan pada hari Jumat, Sabtu, Minggu)
+                $listLiburTerjadwal[] = [
+                    'employee' => $emp,
+                    'attendance' => null,
+                    'leave' => null,
+                    'status_label' => 'Libur Terjadwal (Off Dinas)',
+                ];
             } else {
-                // Pegawai Tanpa Keterangan (Belum Absen / Alpha)
+                // Pegawai Tanpa Keterangan (Belum Absen / Alpha pada hari kerja aktifnya)
                 $listTanpaKeterangan[] = [
                     'employee' => $emp,
                     'attendance' => null,
@@ -90,18 +116,20 @@ class DashboardController extends Controller
             'total_karyawan' => $employees->count(),
             'total_masuk' => count($listMasuk),
             'total_izin' => count($listIzin),
+            'total_libur_terjadwal' => count($listLiburTerjadwal),
             'total_tanpa_keterangan' => count($listTanpaKeterangan),
         ];
 
         return view('dashboard', [
             'title' => 'Dashboard Utama Admin - Monitoring Aktivitas Non-ASN',
             'active' => 'dashboard',
-            'today' => Carbon::now()->locale('id')->translatedFormat('l, d F Y'),
+            'today' => Carbon::now(Attendance::TIMEZONE)->locale('id')->translatedFormat('l, d F Y'),
             'todayDate' => $today,
             'office' => $office,
             'stats' => $stats,
             'listMasuk' => $listMasuk,
             'listIzin' => $listIzin,
+            'listLiburTerjadwal' => $listLiburTerjadwal,
             'listTanpaKeterangan' => $listTanpaKeterangan,
         ]);
     }
@@ -111,7 +139,8 @@ class DashboardController extends Controller
      */
     public function printToday(Request $request)
     {
-        $today = Carbon::today()->toDateString();
+        $today = Carbon::today(Attendance::TIMEZONE)->toDateString();
+        $todayCarbon = Carbon::today(Attendance::TIMEZONE);
         $office = OfficeSetting::getActive();
         $employees = Employee::with(['user', 'role'])->get();
 
@@ -136,15 +165,21 @@ class DashboardController extends Controller
             if ($att && $att->check_in_time) {
                 $status = 'Hadir (' . ($att->check_in_status === 'tepat_waktu' ? 'Tepat Waktu' : 'Terlambat') . ')';
                 $keterangan = 'Masuk: ' . substr($att->check_in_time, 0, 5) . ($att->check_out_time ? ' | Pulang: ' . substr($att->check_out_time, 0, 5) : ' | Belum Pulang');
+                if ($att->shift) {
+                    $keterangan .= ' [' . ($att->shift === 'malam' ? 'Shift Malam' : 'Shift Pagi') . ']';
+                }
                 if ($att->monev_activity) {
-                    $keterangan .= ' - Monev: ' . Str::limit($att->monev_activity, 40);
+                    $keterangan .= ' - Monev: ' . \Illuminate\Support\Str::limit($att->monev_activity, 40);
                 }
             } elseif ($leave) {
                 $status = 'Izin: ' . ucfirst(str_replace('_', ' ', $leave->leave_category));
                 $keterangan = $leave->description;
+            } elseif (!$emp->isWorkDay($todayCarbon)) {
+                $status = 'Libur Terjadwal';
+                $keterangan = 'Jadwal kerja wajib: ' . $emp->workDaysLabel();
             } else {
                 $status = 'Tanpa Keterangan (Alpha)';
-                $keterangan = 'Belum melakukan absensi';
+                $keterangan = 'Belum melakukan absensi pada hari kerja aktif';
             }
 
             $recap[] = [
@@ -161,7 +196,7 @@ class DashboardController extends Controller
 
         return view('attendance.print_today', [
             'title' => 'Laporan Harian Aktivitas Pegawai Non-ASN',
-            'todayFormatted' => Carbon::now()->locale('id')->translatedFormat('l, d F Y'),
+            'todayFormatted' => Carbon::now(Attendance::TIMEZONE)->locale('id')->translatedFormat('l, d F Y'),
             'office' => $office,
             'recap' => $recap,
         ]);

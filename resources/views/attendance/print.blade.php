@@ -69,6 +69,9 @@
                     @endif
                     <td class="border border-gray-400 p-2 text-center">
                         {{ $item->check_in_time ? Carbon\Carbon::parse($item->check_in_time)->format('H:i') : '-' }}
+                        @if($item->shift)
+                            <span class="block text-[9px] font-semibold uppercase">{{ $item->shift }}</span>
+                        @endif
                     </td>
                     <td class="border border-gray-400 p-2 text-center">
                         {{ $item->check_out_time ? Carbon\Carbon::parse($item->check_out_time)->format('H:i') : '-' }}

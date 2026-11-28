@@ -26,12 +26,35 @@ class AttendanceController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $today = Carbon::today()->toDateString();
+        $today = Carbon::today(Attendance::TIMEZONE)->toDateString();
+        $yesterday = Carbon::yesterday(Attendance::TIMEZONE)->toDateString();
         $office = OfficeSetting::getActive();
+        $isSatpam = $user->employee ? $user->employee->isSatpam() : false;
+        $isWorkDayToday = $user->employee ? $user->employee->isWorkDay(Carbon::now(Attendance::TIMEZONE)) : true;
 
-        $attendance = Attendance::where('user_id', $user->id)
-            ->whereDate('date', $today)
-            ->first();
+        // Cek apakah Satpam memiliki tugas Shift Malam kemarin yang belum Absen Pulang (kasus lintas hari)
+        $attendance = null;
+        $isOvernight = false;
+        if ($isSatpam) {
+            $yesterdayNightShift = Attendance::where('user_id', $user->id)
+                ->whereDate('date', $yesterday)
+                ->where('shift', 'malam')
+                ->whereNotNull('check_in_time')
+                ->whereNull('check_out_time')
+                ->first();
+
+            if ($yesterdayNightShift) {
+                $attendance = $yesterdayNightShift;
+                $isOvernight = true;
+            }
+        }
+
+        // Jika tidak ada pending overnight shift malam kemarin, ambil absensi hari ini
+        if (!$attendance) {
+            $attendance = Attendance::where('user_id', $user->id)
+                ->whereDate('date', $today)
+                ->first();
+        }
 
         return view('attendance.index', [
             'title' => 'Absensi & Monev Non-ASN',
@@ -39,28 +62,56 @@ class AttendanceController extends Controller
             'user' => $user,
             'attendance' => $attendance,
             'office' => $office,
-            'today' => Carbon::now()->locale('id')->translatedFormat('l, d F Y'),
+            'today' => Carbon::now(Attendance::TIMEZONE)->locale('id')->translatedFormat('l, d F Y'),
+            'isSatpam' => $isSatpam,
+            'isWorkDayToday' => $isWorkDayToday,
+            'isOvernight' => $isOvernight,
         ]);
     }
 
     /**
-     * Absen Masuk dengan Foto Wajah & Titik Lokasi Kantor
+     * Absen Masuk dengan Foto Wajah, Titik Lokasi Kantor, dan Pilihan Shift (khusus Satpam)
      */
     public function checkIn(Request $request)
     {
-        $request->validate([
+        $user = auth()->user();
+        $isSatpam = $user->employee ? $user->employee->isSatpam() : false;
+
+        $rules = [
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'photo' => 'required|string', // Base64 data URL
-        ], [
+        ];
+        $messages = [
             'photo.required' => 'Foto wajah wajib diambil menggunakan kamera.',
             'latitude.required' => 'Titik lokasi GPS diperlukan untuk absensi.',
             'longitude.required' => 'Titik lokasi GPS diperlukan untuk absensi.',
-        ]);
+        ];
 
-        $user = auth()->user();
-        $today = Carbon::today()->toDateString();
+        if ($isSatpam) {
+            $rules['shift'] = 'required|in:pagi,malam';
+            $messages['shift.required'] = 'Silakan pilih shift dinas jaga (Shift Pagi atau Shift Malam).';
+            $messages['shift.in'] = 'Pilihan shift tidak valid.';
+        }
+
+        $request->validate($rules, $messages);
+
+        $now = Carbon::now(Attendance::TIMEZONE);
+        $today = Carbon::today(Attendance::TIMEZONE)->toDateString();
         $office = OfficeSetting::getActive();
+
+        // Validasi jadwal hari kerja wajib (informasi jika bukan hari kerja resmi)
+        if ($user->employee && !$user->employee->isWorkDay($now)) {
+            $workDays = $user->employee->workDaysLabel();
+            $roleName = $user->employee->role?->name ?? 'Pegawai';
+            $dayName = $now->locale('id')->translatedFormat('l');
+            $msg = "Hari ini ({$dayName}) bukan jadwal hari kerja wajib untuk {$roleName} (Jadwal: {$workDays}).";
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            notify()->warning($msg, 'Bukan Hari Kerja');
+            return redirect()->back()->withInput();
+        }
 
         // Cek apakah sudah absen masuk hari ini
         $existing = Attendance::where('user_id', $user->id)->whereDate('date', $today)->first();
@@ -96,9 +147,18 @@ class AttendanceController extends Controller
         // Simpan foto wajah dari base64
         $photoPath = $this->saveBase64Image($request->photo, 'attendance_checkin');
 
-        // Tentukan status tepat waktu atau terlambat
-        $now = Carbon::now();
-        $checkInLimit = Carbon::parse($office->check_in_end);
+        // Tentukan batas jam masuk dan status tepat waktu atau terlambat berdasarkan shift
+        $shift = $isSatpam ? $request->input('shift') : null;
+
+        if ($isSatpam && $shift === 'malam') {
+            $limitTimeStr = $office->satpam_malam_in_end ?? '20:00:00';
+        } elseif ($isSatpam && $shift === 'pagi') {
+            $limitTimeStr = $office->satpam_pagi_in_end ?? '08:00:00';
+        } else {
+            $limitTimeStr = $office->check_in_end ?? '08:00:00';
+        }
+
+        $checkInLimit = $now->copy()->setTimeFromTimeString($limitTimeStr);
         $checkInStatus = $now->gt($checkInLimit) ? 'terlambat' : 'tepat_waktu';
         $status = $now->gt($checkInLimit) ? 'terlambat' : 'hadir';
 
@@ -111,6 +171,7 @@ class AttendanceController extends Controller
             ],
             [
                 'employee_id' => $employeeId,
+                'shift' => $shift,
                 'check_in_time' => $now->toTimeString(),
                 'check_in_photo' => $photoPath,
                 'check_in_lat' => $request->latitude,
@@ -121,8 +182,9 @@ class AttendanceController extends Controller
             ]
         );
 
+        $shiftLabel = $shift ? ($shift === 'malam' ? ' (Shift Malam)' : ' (Shift Pagi)') : '';
         $statusMsg = $checkInStatus === 'terlambat' ? ' (Terlambat)' : ' (Tepat Waktu)';
-        $successMsg = 'Absen masuk berhasil direkam' . $statusMsg . ' pada jam ' . $now->format('H:i');
+        $successMsg = 'Absen masuk' . $shiftLabel . ' berhasil direkam' . $statusMsg . ' pada jam ' . $now->format('H:i');
 
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'message' => $successMsg]);
@@ -155,10 +217,26 @@ class AttendanceController extends Controller
         ]);
 
         $user = auth()->user();
-        $today = Carbon::today()->toDateString();
+        $today = Carbon::today(Attendance::TIMEZONE)->toDateString();
+        $yesterday = Carbon::yesterday(Attendance::TIMEZONE)->toDateString();
         $office = OfficeSetting::getActive();
+        $isSatpam = $user->employee ? $user->employee->isSatpam() : false;
 
-        $attendance = Attendance::where('user_id', $user->id)->whereDate('date', $today)->first();
+        // Cari absensi: Jika Satpam, cek apakah ada Shift Malam kemarin yang belum checkout (lintas hari)
+        $attendance = null;
+        if ($isSatpam) {
+            $attendance = Attendance::where('user_id', $user->id)
+                ->whereDate('date', $yesterday)
+                ->where('shift', 'malam')
+                ->whereNotNull('check_in_time')
+                ->whereNull('check_out_time')
+                ->first();
+        }
+
+        // Jika bukan overnight shift malam, ambil record absensi hari ini
+        if (!$attendance) {
+            $attendance = Attendance::where('user_id', $user->id)->whereDate('date', $today)->first();
+        }
 
         if (!$attendance || !$attendance->check_in_time) {
             $msg = 'Anda belum melakukan absen masuk hari ini.';
@@ -209,7 +287,7 @@ class AttendanceController extends Controller
             }
         }
 
-        $now = Carbon::now();
+        $now = Carbon::now(Attendance::TIMEZONE);
 
         $attendance->update([
             'check_out_time' => $now->toTimeString(),
@@ -238,8 +316,8 @@ class AttendanceController extends Controller
     public function recap(Request $request)
     {
         $user = auth()->user();
-        $month = $request->input('month', Carbon::now()->month);
-        $year = $request->input('year', Carbon::now()->year);
+        $month = $request->input('month', Carbon::now(Attendance::TIMEZONE)->month);
+        $year = $request->input('year', Carbon::now(Attendance::TIMEZONE)->year);
         $selectedUserId = $request->input('user_id');
         $statusFilter = $request->input('status');
 
@@ -305,8 +383,8 @@ class AttendanceController extends Controller
     public function printRecap(Request $request)
     {
         $user = auth()->user();
-        $month = $request->input('month', Carbon::now()->month);
-        $year = $request->input('year', Carbon::now()->year);
+        $month = $request->input('month', Carbon::now(Attendance::TIMEZONE)->month);
+        $year = $request->input('year', Carbon::now(Attendance::TIMEZONE)->year);
         $selectedUserId = $request->input('user_id');
 
         $query = Attendance::with(['user.employee.role'])
@@ -374,6 +452,12 @@ class AttendanceController extends Controller
             'check_in_start' => 'required',
             'check_in_end' => 'required',
             'check_out_start' => 'required',
+            'satpam_pagi_in_start' => 'nullable',
+            'satpam_pagi_in_end' => 'nullable',
+            'satpam_pagi_out_start' => 'nullable',
+            'satpam_malam_in_start' => 'nullable',
+            'satpam_malam_in_end' => 'nullable',
+            'satpam_malam_out_start' => 'nullable',
         ]);
 
         $office = OfficeSetting::getActive();
