@@ -38,18 +38,30 @@
                     </div>
                 </div>
 
-                <div class="flex justify-end">
-                    <button type="button" onclick="getCurrentLocation()" class="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50 px-3 py-1.5 rounded-lg border border-blue-200">
-                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                        Ambil Titik Koordinat GPS Saat Ini
-                    </button>
+                <!-- Quick Presets -->
+                <div class="flex flex-wrap items-center justify-between gap-2 p-3.5 bg-blue-50/80 border-2 border-blue-200 rounded-2xl text-xs shadow-sm">
+                    <span class="font-black text-blue-900 uppercase tracking-wide">Preset Lokasi Cepat:</span>
+                    <div class="flex flex-wrap items-center gap-2">
+                        <button type="button" onclick="setPresetKanwilBabel()"
+                            style="background-color: #2563eb; color: #ffffff !important;"
+                            class="btn-colorful px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-bold transition flex items-center gap-1.5 shadow-md active:shadow-inner active:scale-95 border border-transparent cursor-pointer">
+                            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" /></svg>
+                            Kanwil Kemenkumham Babel
+                        </button>
+                        <button type="button" onclick="getCurrentLocation()"
+                            style="background-color: #059669; color: #ffffff !important;"
+                            class="btn-colorful px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold transition flex items-center gap-1.5 shadow-md active:shadow-inner active:scale-95 border border-transparent cursor-pointer">
+                            <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" /><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                            Gunakan GPS Saya Sekarang
+                        </button>
+                    </div>
                 </div>
 
                 <div>
                     <label class="block text-sm font-semibold text-gray-700 mb-1">Radius Toleransi Lokasi (Meter) <span class="text-red-500">*</span></label>
-                    <input type="number" name="radius_meters" value="{{ old('radius_meters', $office->radius_meters) }}" required min="0" max="50000000"
+                    <input type="number" name="radius_meters" id="radiusMeters" value="{{ old('radius_meters', $office->radius_meters) }}" required min="0" max="50000000"
                         class="w-full border border-gray-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none">
-                    <p class="text-xs text-gray-500 mt-1">Pegawai Non-ASN hanya dapat absen jika berada dalam jarak radius ini dari titik kantor. <span class="text-indigo-600 font-semibold">(Isi 0 untuk Mode Bebas / Testing tanpa batasan radius).</span></p>
+                    <p class="text-xs text-gray-400 mt-1">Disarankan <strong>500 - 1000 meter</strong> untuk kawasan komplek perkantoran yang luas agar sinyal GPS di dalam ruangan tetap terakomodasi.</p>
                     @error('radius_meters') <span class="text-xs text-red-600">{{ $message }}</span> @enderror
                 </div>
 
@@ -115,10 +127,16 @@
                 </div>
 
                 <div class="pt-6 border-t flex justify-end gap-3">
-                    <a href="{{ route('attendance.index') }}" class="px-5 py-2 border rounded-lg text-sm text-gray-600 hover:bg-gray-100 font-medium">
+                <div class="pt-6 border-t flex justify-end items-center gap-3">
+                    <a href="{{ route('attendance.index') }}"
+                        style="background-color: #fff1f2; color: #9f1239; border: 2px solid #fecdd3;"
+                        class="btn-colorful px-5 py-2.5 rounded-xl text-xs font-bold transition shadow-sm active:shadow-inner active:scale-95">
                         Batal
                     </a>
-                    <button type="submit" class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-sm font-semibold shadow">
+                    <button type="submit"
+                        style="background-color: #2563eb; color: #ffffff !important; border: 2px solid #facc15;"
+                        class="btn-colorful px-7 py-2.5 hover:bg-blue-700 text-white rounded-xl text-sm font-black shadow-lg hover:shadow-xl transition active:shadow-inner active:scale-95 flex items-center gap-2 cursor-pointer">
+                        <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                         Simpan Pengaturan
                     </button>
                 </div>
@@ -127,6 +145,14 @@
     </div>
 
     <script>
+        function setPresetKanwilBabel() {
+            document.querySelector('input[name="office_name"]').value = "Kanwil Kemenkumham Kepulauan Bangka Belitung";
+            document.getElementById('officeLat').value = "-2.1516954";
+            document.getElementById('officeLng').value = "106.1568149";
+            document.getElementById('radiusMeters').value = "500";
+            alert("Preset Kanwil Kemenkumham Bangka Belitung berhasil diterapkan:\nLatitude: -2.1516954\nLongitude: 106.1568149\nRadius: 500 meter.\n\nSilakan klik 'Simpan Pengaturan' untuk menyimpan.");
+        }
+
         function getCurrentLocation() {
             if ("geolocation" in navigator) {
                 navigator.geolocation.getCurrentPosition(function(pos) {

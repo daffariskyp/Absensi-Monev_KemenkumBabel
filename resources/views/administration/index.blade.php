@@ -14,7 +14,8 @@
             </div>
             <div>
                 <a href="{{ route('administration.create') }}"
-                    class="bg-blue-600 hover:bg-blue-700 text-white text-sm px-5 py-2.5 rounded-xl font-bold inline-flex items-center gap-2 shadow-lg hover:shadow-indigo-500/30 transition">
+                    style="background-color: #2563eb; color: #ffffff !important; border: 2px solid #facc15;"
+                    class="btn-colorful hover:bg-blue-700 text-white text-sm px-5 py-2.5 rounded-xl font-black inline-flex items-center gap-2 shadow-lg transition active:shadow-inner cursor-pointer">
                     <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4" />
                     </svg>
@@ -27,32 +28,32 @@
         <div class="grid grid-cols-2 md:grid-cols-6 gap-3 mb-6">
             <div class="bg-white border rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-gray-400 uppercase tracking-wider">Total Izin</div>
-                <div class="text-2xl font-extrabold text-gray-800 mt-1">{{ $stats['total'] }}</div>
+                <div class="text-2xl font-extrabold text-gray-800 mt-1" data-count-up>{{ $stats['total'] }}</div>
                 <div class="text-[11px] text-gray-500">Semua Permohonan</div>
             </div>
             <div class="bg-white border border-amber-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-amber-600 uppercase tracking-wider">Pending</div>
-                <div class="text-2xl font-extrabold text-amber-700 mt-1">{{ $stats['pending'] }}</div>
+                <div class="text-2xl font-extrabold text-amber-700 mt-1" data-count-up>{{ $stats['pending'] }}</div>
                 <div class="text-[11px] text-amber-500">Menunggu Atasan</div>
             </div>
             <div class="bg-white border border-emerald-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-emerald-600 uppercase tracking-wider">Disetujui</div>
-                <div class="text-2xl font-extrabold text-emerald-700 mt-1">{{ $stats['approved'] }}</div>
+                <div class="text-2xl font-extrabold text-emerald-700 mt-1" data-count-up>{{ $stats['approved'] }}</div>
                 <div class="text-[11px] text-emerald-500">Izin Diterima</div>
             </div>
             <div class="bg-white border border-rose-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-rose-600 uppercase tracking-wider">Ditolak</div>
-                <div class="text-2xl font-extrabold text-rose-700 mt-1">{{ $stats['rejected'] }}</div>
+                <div class="text-2xl font-extrabold text-rose-700 mt-1" data-count-up>{{ $stats['rejected'] }}</div>
                 <div class="text-[11px] text-rose-500">Tidak Diizinkan</div>
             </div>
             <div class="bg-white border border-purple-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-purple-600 uppercase tracking-wider">Izin Sakit</div>
-                <div class="text-2xl font-extrabold text-purple-700 mt-1">{{ $stats['sakit'] }}</div>
+                <div class="text-2xl font-extrabold text-purple-700 mt-1" data-count-up>{{ $stats['sakit'] }}</div>
                 <div class="text-[11px] text-purple-500">Surat Dokter</div>
             </div>
             <div class="bg-white border border-blue-200 rounded-xl p-4 shadow-sm">
                 <div class="text-[11px] font-bold text-blue-600 uppercase tracking-wider">Cuti Tahunan</div>
-                <div class="text-2xl font-extrabold text-blue-700 mt-1">{{ $stats['cuti'] }}</div>
+                <div class="text-2xl font-extrabold text-blue-700 mt-1" data-count-up>{{ $stats['cuti'] }}</div>
                 <div class="text-[11px] text-blue-500">Hak Cuti Non-ASN</div>
             </div>
         </div>
@@ -86,6 +87,11 @@
         <!-- Filter Bar -->
         <div class="bg-white border rounded-xl p-4 shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
             <form action="" method="GET" class="flex flex-wrap items-center gap-3">
+                <input type="search" name="search" aria-label="Cari nama pemohon"
+                    value="{{ request()->string('search') }}" placeholder="Cari nama pemohon"
+                    class="table-filter px-3 text-sm">
+                <button type="submit" class="app-action">Cari</button>
+
                 <!-- Filter Kategori -->
                 <div>
                     <select name="leave_category"
@@ -251,24 +257,34 @@
                                 <!-- Aksi -->
                                 <td class="py-3 px-3 text-center">
                                     <div class="flex items-center justify-center gap-1.5">
-                                        {{-- Tombol Setujui / Tolak bagi Admin --}}
-                                        @if(auth()->user()->role === 'admin' && $item->status === 'pending')
+                                        {{-- Tombol Cetak Bukti Izin (TTD QR) jika Disetujui --}}
+                                        @if($item->status === 'approved')
+                                            <a href="{{ route('administration.print', $item->id) }}" target="_blank"
+                                                class="btn-colorful px-3 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition flex items-center gap-1.5 border border-transparent"
+                                                title="Cetak Bukti Cuti Resmi dengan TTD QR">
+                                                <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                                                <span>Bukti TTD QR</span>
+                                            </a>
+                                        @endif
+
+                                        {{-- Tombol Setujui / Tolak bagi Admin & Supervisor --}}
+                                        @if(in_array(auth()->user()->role, ['admin', 'supervisor']) && $item->status === 'pending')
                                             <form action="{{ route('administration.approve', $item->id) }}" method="POST" class="inline">
                                                 @csrf
                                                 <button type="submit" onclick="return confirm('Apakah Anda yakin ingin menyetujui pengajuan izin ini?')"
-                                                    class="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded text-xs font-bold shadow-sm transition">
+                                                    class="btn-colorful px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-md transition border border-transparent">
                                                     Setujui
                                                 </button>
                                             </form>
 
                                             <button type="button" onclick="openRejectModal({{ $item->id }})"
-                                                class="px-2.5 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded text-xs font-bold shadow-sm transition">
+                                                class="btn-colorful px-3 py-1.5 bg-gradient-to-r from-rose-600 to-red-600 hover:from-rose-700 hover:to-red-700 text-white rounded-xl text-xs font-bold shadow-md transition border border-transparent">
                                                 Tolak
                                             </button>
                                         @endif
 
                                         {{-- Edit & Hapus bagi Pemilik saat masih Pending --}}
-                                        @if($item->status === 'pending' && ($item->user_id === auth()->id() || auth()->user()->role === 'admin'))
+                                        @if($item->status === 'pending' && ($item->user_id === auth()->id() || in_array(auth()->user()->role, ['admin', 'supervisor'])))
                                             <a href="{{ route('administration.edit', $item->id) }}" class="p-1.5 text-gray-500 hover:text-blue-600 transition" title="Edit">
                                                 <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -301,9 +317,11 @@
                 </table>
             </div>
 
-            <div class="p-4 border-t">
-                {{ $administrations->links() }}
-            </div>
+            @if($administrations->hasPages())
+                <div class="p-4 border-t">
+                    {{ $administrations->withQueryString()->links() }}
+                </div>
+            @endif
         </div>
     </div>
 
@@ -320,10 +338,10 @@
             <div class="p-3 bg-gray-50 border-t flex justify-between items-center">
                 <span class="text-xs text-gray-500">Bukti otentik surat keterangan dokter yang diunggah pegawai.</span>
                 <div class="flex items-center gap-2">
-                    <a id="suratDownloadBtn" href="" target="_blank" class="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded text-xs font-semibold">
+                    <a id="suratDownloadBtn" href="" target="_blank" class="btn-colorful px-4 py-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold shadow-md transition">
                         Buka Ukuran Asli
                     </a>
-                    <button type="button" onclick="closeSuratModal()" class="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 rounded text-xs font-semibold">
+                    <button type="button" onclick="closeSuratModal()" class="btn-colorful px-4 py-1.5 bg-gradient-to-r from-gray-700 to-gray-800 text-white rounded-xl text-xs font-bold transition">
                         Tutup
                     </button>
                 </div>

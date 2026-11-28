@@ -1,160 +1,88 @@
-<div align="center">
+# SIMON-KUMBABEL
 
-# 🏛️ Absensi & Monev Non-ASN
-### Kantor Wilayah Kementerian Hukum dan HAM Kepulauan Bangka Belitung
+**Sistem Informasi Monitoring Aktivitas dan Kehadiran Pegawai Non-ASN Kanwil Kemenkum Babel**
 
-[![Laravel](https://img.shields.io/badge/Laravel-11.x-FF2D20?style=flat-square&logo=laravel&logoColor=white)](https://laravel.com)
-[![PHP](https://img.shields.io/badge/PHP-8.2%20|%208.3-777BB4?style=flat-square&logo=php&logoColor=white)](https://www.php.net)
-[![MySQL](https://img.shields.io/badge/MySQL-8.0%2B-4479A1?style=flat-square&logo=mysql&logoColor=white)](https://www.mysql.com)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind_CSS-3.4-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white)](https://tailwindcss.com)
-[![Vite](https://img.shields.io/badge/Vite-5.x-646CFF?style=flat-square&logo=vite&logoColor=white)](https://vitejs.dev)
-[![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)](LICENSE)
+Aplikasi internal untuk mencatat presensi dan kegiatan harian, mengelola pengajuan izin atau cuti, serta menyiapkan rekap kehadiran dan aktivitas pegawai.
 
-<p align="center">
-  Sistem presensi digital berbasis <b>Geofencing GPS</b> dan <b>Biometrik Wajah</b> terintegrasi modul <b>Monitoring & Evaluasi (Monev)</b> aktivitas harian serta perizinan pegawai Non-ASN.
-</p>
+## Fitur utama
 
-</div>
+| Fitur | Kegunaan |
+| --- | --- |
+| Presensi | Absen masuk dan pulang dengan validasi radius kantor dan foto langsung dari kamera browser. |
+| Aktivitas Monev | Catat kegiatan harian, kendala, dan bukti foto. Aktivitas dapat direkap berdasarkan periode dan pegawai. |
+| Izin dan cuti | Ajukan permohonan dengan lampiran bila diperlukan. Admin dan supervisor dapat meninjau pengajuan melalui notifikasi di navbar. |
+| Dashboard dan laporan | Pantau grafik kehadiran yang diperbarui setiap 30 detik. Cetak atau simpan rekap harian, bulanan, dan tahunan sebagai PDF melalui browser. |
+| Profil dan pengelolaan SDM | Pengguna dapat memperbarui foto dan biodata sendiri. Admin mengelola akun, divisi, hak akses, serta pengaturan lokasi dan jam presensi. |
 
----
+## Hak akses
 
-## 🌟 Fitur Utama
+| Peran | Akses utama |
+| --- | --- |
+| Admin | Dashboard, laporan seluruh pegawai, persetujuan izin dan cuti, pengelolaan SDM, serta pengaturan presensi. |
+| Supervisor | Dashboard, laporan seluruh pegawai, dan persetujuan izin dan cuti. |
+| Pegawai | Presensi, aktivitas Monev, pengajuan izin atau cuti, dan rekapan sendiri. |
 
-* **📍 Geofencing & Face Capture Presisi**  
-  Perekaman kehadiran masuk dan pulang wajib menyertakan foto wajah langsung (*live camera* / *capture perangkat*) yang divalidasi dengan radius GPS kantor menggunakan kalkulasi formula Haversine. Dilengkapi *testing mode* (`radius = 0`) untuk fleksibilitas pengujian lokal.
+Divisi yang tersedia meliputi **Petugas Kebersihan, Satpam, Driver, dan Kabag (Kepala Bagian)**. Hak akses akun ditetapkan secara terpisah dari divisi.
 
-* **📋 Monev Harian Terintegrasi**  
-  Syarat wajib sebelum absen pulang: pegawai mengisi uraian aktivitas, analisis kendala lapangan (minimal 100 karakter), dan unggah bukti foto kegiatan (maksimal 3 foto).
+## Menjalankan secara lokal
 
-* **📝 Pengajuan Cuti & Izin Digital**  
-  Pengajuan 9 kategori izin/cuti (sakit, cuti tahunan, dinas luar, dll.) dilengkapi upload berkas pendukung dan alur persetujuan (*approval / rejection*) oleh atasan secara real-time.
+Proyek menggunakan Laravel 11, Blade, Tailwind CSS, dan Vite. Siapkan **PHP 8.2 atau lebih baru**, Composer, dan MySQL. Perintah berikut menggunakan PowerShell dan bisa dijalankan dari terminal Laragon.
 
-* **📊 Dashboard Monitoring & Pelaporan**  
-  Pemantauan status kehadiran harian (Tepat Waktu, Terlambat, Izin, Alpha) secara instan, lengkap dengan rekapitulasi presensi bulanan dan fitur cetak laporan siap pakai (*print / PDF export*).
+1. Nyalakan MySQL, buat database kosong, lalu jalankan perintah berikut dari folder proyek.
 
-* **🗂️ Manajemen Tugas & Proyek**  
-  Papan alur tugas (*Kanban task workflow*), pencatatan estimasi durasi kerja (*time tracking*), dan pemantauan progres penyelesaian proyek.
+   ```powershell
+   Copy-Item .env.example .env
+   New-Item -ItemType Directory -Force -Path bootstrap/cache,storage/framework/views,storage/framework/sessions,storage/framework/cache/data | Out-Null
+   composer install
+   php artisan key:generate
+   ```
 
----
+2. Sesuaikan `DB_DATABASE`, `DB_USERNAME`, dan `DB_PASSWORD` di `.env` dengan database lokal. Setel `APP_URL` ke `http://127.0.0.1:8000` jika memakai server Artisan, lalu jalankan migrasi, tautkan penyimpanan, dan mulai server.
 
-## 🛠️ Tech Stack
+   ```powershell
+   php artisan migrate
+   php artisan storage:link
+   php artisan serve
+   ```
 
-| Komponen | Teknologi |
-| :--- | :--- |
-| **Backend** | [Laravel 11](https://laravel.com), PHP 8.2 / 8.3 |
-| **Frontend** | [Tailwind CSS](https://tailwindcss.com), Blade Engine, [SweetAlert2](https://sweetalert2.github.io) |
-| **Tooling** | [Vite 5](https://vitejs.dev), Composer, NPM |
-| **Database** | MySQL 8.0+ / MariaDB |
-| **APIs** | HTML5 Geolocation API, WebRTC MediaStream API |
+3. Buka aplikasi dan masuk dengan akun yang tersedia. Untuk mengisi database lokal baru dengan akun contoh dan data uji, jalankan `php artisan db:seed` satu kali. Akun admin contoh didefinisikan di [UserSeeder.php](database/seeders/UserSeeder.php). [Buka SIMON-KUMBABEL di server lokal](http://127.0.0.1:8000)
 
----
+### Pengembangan aset frontend
 
-## 🚀 Quick Start (Panduan Cepat)
+Jika mengubah aset Vite di `resources/css` atau `resources/js`, gunakan Node.js dan npm untuk membangun ulang aset.
 
-### Prasyarat
-* PHP `>= 8.2` (ekstensi: `pdo_mysql`, `curl`, `fileinfo`, `gd`, `intl`, `mbstring`, `zip`, `openssl`)
-* Composer `>= 2.x`
-* Node.js `>= 18.x` & NPM
-* MySQL / MariaDB (misal: Laragon / XAMPP)
-
-### Instalasi
-
-```bash
-# 1. Clone repository
-git clone https://github.com/kenyongid/Absensi-Monev_KemenkumBabel.git
-cd Absensi-Monev_KemenkumBabel
-
-# 2. Setup environment
-cp .env.example .env
-
-# 3. Install dependencies PHP & Node
-composer install
-npm install && npm run build
-
-# 4. Generate application key
-php artisan key:generate
-
-# 5. Database migration & initial data seeding
-php artisan migrate:fresh --seed
-php artisan storage:link
-
-# 6. Jalankan server lokal
-php artisan serve
+```powershell
+npm ci
+npm run build
 ```
 
-> **Pengguna Windows (Laragon):** Anda juga dapat langsung menjalankan server cukup dengan klik dua kali file **`run.bat`**.
+Gunakan `npm run dev` di terminal terpisah saat mengerjakan aset dengan Vite.
 
-Buka browser di **`http://127.0.0.1:8000`**.
+## Penggunaan
 
----
-
-## 🔑 Akun Login Bawaan (Hasil Seeder)
-
-| Role | Email | Password | Hak Akses |
-| :--- | :--- | :--- | :--- |
-| **Admin** | `admin@example.com` | `admin` | Dashboard, Rekapitulasi, Approval Cuti, Pengaturan Kantor, Manajemen SDM |
-| **Satpam (Non-ASN)** | `joko.satpam@nonasn.id` | `password123` | Presensi Masuk & Pulang, Monev Harian, Pengajuan Izin/Cuti |
-| **Driver (Non-ASN)** | `agus.driver@nonasn.id` | `password123` | Presensi Masuk & Pulang, Monev Harian, Pengajuan Izin/Cuti |
-| **Kebersihan (Non-ASN)**| `siti.kebersihan@nonasn.id` | `password123` | Presensi Masuk & Pulang, Monev Harian, Pengajuan Izin/Cuti |
+- **Presensi** — Izinkan akses kamera dan lokasi di browser. Akses dari HP memakai HTTPS agar kedua fitur tersedia.
+- **Rekap bulanan** — Buka **Rekapan Absensi & Monev**, pilih bulan dan tahun, lalu klik **Tampilkan rekap**. Admin dan supervisor juga bisa memilih pegawai.
+- **Cetak laporan** — Di dashboard, pilih bulan atau **Setahun penuh**, tentukan tahun, lalu klik **Buka laporan cetak**. Gunakan **Cetak / Simpan PDF** untuk menyimpan laporan lewat dialog cetak browser.
+- **Foto dan lampiran** — Jika file sudah tersimpan tetapi gagal tampil pada instalasi baru, periksa tautan dari `public/storage` ke `storage/app/public`. Perintah `php artisan storage:link` membuat tautan tersebut.
 
 ---
 
-## ⚙️ Pengaturan Geofencing & Lokasi Kantor
+© 2026 Fadhil Raihan · SIMON-KUMBABEL
 
-1. Login sebagai **Admin** (`admin@example.com`).
-2. Masuk ke menu **Pengaturan Lokasi Kantor** (`/attendance/settings`).
-3. Anda dapat:
-   * Menyesuaikan koordinat GPS kantor dengan menekan tombol **"Ambil Titik Koordinat GPS Saat Ini"**.
-   * Menentukan radius toleransi (meter).
-   * Menyetel `radius = 0` jika ingin mengaktifkan **Mode Bebas / Testing** tanpa batasan jarak geofence.
 
----
+## Jadwal dan shift presensi
 
-## 📂 Struktur Direktori Utama
+Monev dapat dicatat terpisah hingga pukul 14.30 WIB. Jika belum ada kegiatan
+untuk tanggal mulai shift, form absen pulang meminta uraian dan kendala.
+Kegiatan tersebut direkap pada tanggal mulai shift, termasuk untuk shift malam.
 
-```text
-├── app/
-│   ├── Http/Controllers/     # Controller logika absensi, monev, cuti, proyek & task
-│   └── Models/                  # Model Eloquent database (Attendance, OfficeSetting, dll.)
-├── database/
-│   ├── migrations/              # Skema tabel database
-│   └── seeders/                 # Data dummy & inisialisasi sistem
-├── resources/
-│   ├── views/                   # Template tampilan Blade (attendance, administration, dashboard)
-│   ├── css/ & js/               # Kode sumber Tailwind & JavaScript
-├── routes/
-│   └── web.php                  # Rute aplikasi
-└── run.bat                      # Runner instan untuk Windows / Laragon
-```
 
----
+Satpam bekerja Senin–Jumat dan memilih Shift Pagi atau Shift Malam sebelum
+mengambil foto masuk. Shift malam yang belum selesai dapat ditutup keesokan
+harinya. Driver, Petugas Kebersihan, dan pegawai Non-ASN lain bekerja Senin–Kamis.
+Batas tepat waktu presensi reguler adalah 08.00 WIB secara default. Jam mulai
+bersifat informatif dan jadwal dapat disesuaikan di pengaturan kantor.
 
-## 💡 Troubleshooting Ringkas
+Radius bernilai 0 menonaktifkan pembatasan jarak untuk pengujian.
 
-<details>
-<summary><b>1. Mengapa Absen Masuk tertolak karena radius kantor?</b></summary>
-Pastikan radius kantor diatur ke <code>0</code> (Testing Mode) di <code>/attendance/settings</code> atau perbarui titik kantor sesuai lokasi perangkat Anda saat ini.
-</details>
-
-<details>
-<summary><b>2. Izin kamera atau lokasi tidak muncul di browser?</b></summary>
-Pastikan Anda mengakses via <code>http://localhost:8000</code> atau <code>http://127.0.0.1:8000</code>. Browser mengizinkan akses kamera dan lokasi hanya pada domain aman (HTTPS atau localhost). Klik ikon gembok pada address bar untuk memastikan izin <b>Camera</b> dan <b>Location</b> berstatus <i>Allow</i>.
-</details>
-
-<details>
-<summary><b>3. Foto presensi atau profil tidak tampil?</b></summary>
-Jalankan perintah symlink penyimpanan publik:
-<code>php artisan storage:link</code>
-</details>
-
-<details>
-<summary><b>4. Error <code>Please provide a valid cache path</code>?</b></summary>
-Pastikan direktori cache framework Laravel telah tersedia:
-<code>mkdir -p storage/framework/views storage/framework/cache/data storage/framework/sessions bootstrap/cache</code>
-</details>
-
----
-
-## 📄 Lisensi
-
-Proyek ini berada di bawah lisensi [MIT](LICENSE). Dikembangkan untuk keperluan operasional dan monitoring evaluasi pegawai di lingkungan Kementerian Hukum dan Hak Asasi Manusia Republik Indonesia.
+Kode QR memuat ringkasan laporan yang dapat dipindai. Ekstensi PHP XMLWriter diperlukan untuk mencetak kode QR.

@@ -6,21 +6,23 @@ use App\Models\User;
 use App\Models\Employee;
 use App\Models\Role;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use PhpParser\Node\Stmt\TryCatch;
+use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rule;
 
 class AdminController extends Controller
 {
     public function __construct()
     {
+        $this->middleware('auth');
         $this->middleware(function ($request, $next) {
-            if (!auth()->user()->employee) {
+            if (auth()->check() && auth()->user()->role === 'admin') {
                 return $next($request);
             }
 
-            return redirect()->route('dashboard');
-
+            abort(403, 'Akses ditolak: Menu manajemen SDM hanya dapat diakses oleh Administrator Utama.');
         });
     }
 
@@ -52,11 +54,11 @@ class AdminController extends Controller
             $query->where('role_id', $roleFilter);
         }
 
-        // Paginate hasil query
-        $employees = $query->paginate(10);
+        // Tampilkan seluruh pegawai dalam 1 halaman utama (hingga 100 pegawai) agar tombol Hapus tidak terpotong pagination
+        $employees = $query->paginate(15);
 
         // Ambil semua role
-        $roles = Role::all();
+        $roles = Role::whereIn('name', Role::DIVISIONS)->orderBy('name')->get();
         return view('admin.index', [
           "title" => "Admin",
           "active" => "admin",
@@ -75,7 +77,7 @@ class AdminController extends Controller
         //   abort(403, 'Anda tidak memiliki akses ke halaman ini.'); // Forbidden
         // }
 
-        $roles = Role::all();
+        $roles = Role::whereIn('name', Role::DIVISIONS)->orderBy('name')->get();
         return view('admin.create', [
           "title" => "Create User",
           "active" => "admin",
@@ -90,33 +92,37 @@ class AdminController extends Controller
               'name' => 'required|string|max:255',
               'email' => 'required|email|unique:users,email',
               'password' => 'required|min:8|confirmed',
-              'role_id' => 'required|exists:roles,id',
+              'role_id' => ['required', Rule::exists('roles', 'id')->whereIn('name', Role::DIVISIONS)],
+              'system_role' => 'nullable|in:admin,supervisor,user',
             ]);
+
+            $systemRole = $validated['system_role'] ?? 'user';
 
             $user = User::create([
               'name' => $validated['name'],
               'email' => $validated['email'],
-                'password' => $validated['password'],
-                'role' => $validated['role_id'] == 2 ? 'admin' : 'user',
+              'password' => $validated['password'],
+              'role' => $systemRole,
             ]);
 
             Employee::create([
               'user_id' => $user->id,
               'role_id' => $validated['role_id'],
+              'work_email' => $validated['email'],
             ]);
 
-            return redirect()->route('admin.index')->with('success', 'User created successfully!');
+            return redirect()->route('admin.index')->with('success', 'Akun SDM berhasil dibuat!');
         } catch (\Illuminate\Validation\ValidationException $e) {
-            return redirect()->back()->withInput()->with('error', implode(' ', $e->errors()));
+            return redirect()->back()->withInput()->withErrors($e->validator);
         } catch (\Exception $e) {
-            return redirect()->back()->withInput()->with('error', 'Failed to create user: ' . $e->getMessage());
+            return redirect()->back()->withInput()->with('error', 'Gagal membuat akun SDM: ' . $e->getMessage());
         }
     }
 
     public function edit($id)
     {
-        $employee = Employee::findOrFail($id);
-        $roles = Role::all();
+        $employee = Employee::with(['user', 'role'])->findOrFail($id);
+        $roles = Role::whereIn('name', Role::DIVISIONS)->orderBy('name')->get();
         $statuses = Employee::getStatuses();
 
         return view('admin.edit', [
@@ -130,12 +136,15 @@ class AdminController extends Controller
 
     public function update(Request $request, $id)
     {
-
         $employee = Employee::findOrFail($id);
 
         $validated = $request->validate([
-          'work_email' => 'required|email|unique:employees,work_email,' . $employee->id,
-          'photo' => 'nullable|image|max:2048', // Maksimum ukuran 2MB
+          'name' => 'nullable|string|max:255',
+          'system_role' => 'nullable|in:admin,supervisor,user',
+          'role_id' => ['nullable', Rule::exists('roles', 'id')->whereIn('name', Role::DIVISIONS)],
+          'password' => 'nullable|min:8|confirmed',
+          'work_email' => 'nullable|email|unique:employees,work_email,' . $employee->id,
+          'photo' => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
           'nik' => 'nullable|string|max:255|unique:employees,nik,' . $employee->id,
           'status' => 'nullable|in:Kontrak,Freelance,Tetap,Tenaga Ahli',
           'birth_date' => 'nullable|date',
@@ -144,18 +153,51 @@ class AdminController extends Controller
           'address' => 'nullable|string|max:255',
           'join_date' => 'nullable|date',
           'education' => 'nullable|string|max:255',
+        ], [
+          'photo.uploaded' => 'Foto gagal diunggah. Pilih file JPG, PNG, atau WebP hingga 5 MB.',
+          'photo.image' => 'Pilih file foto yang valid.',
+          'photo.mimes' => 'Format foto harus JPG, PNG, atau WebP.',
+          'photo.max' => 'Ukuran foto maksimal 5 MB.',
         ]);
 
-        if ($request->hasFile('photo')) {
-            if ($request->old_photo) {
-                Storage::delete($request->old_photo);
-            }
-            $validated['photo'] = $request->file('photo')->store('users-image', 'public');
-        }
-        // Update data employee
-        $employee->update($validated);
+        $userUpdates = array_filter([
+            'name' => $validated['name'] ?? null,
+            'role' => $validated['system_role'] ?? null,
+            'password' => isset($validated['password']) ? Hash::make($validated['password']) : null,
+        ], fn ($value) => $value !== null);
 
-        return redirect()->route('admin.index')->with('success', 'Employee updated successfully!');
+        $newPhoto = null;
+        if ($request->hasFile('photo')) {
+            $newPhoto = $request->file('photo')->store('users-image', 'public');
+            if ($newPhoto === false) {
+                throw ValidationException::withMessages(['photo' => 'Foto gagal ditulis ke penyimpanan.']);
+            }
+            $validated['photo'] = $newPhoto;
+        }
+
+        try {
+            $previousPhoto = DB::transaction(function () use ($employee, $validated, $userUpdates) {
+                $current = Employee::lockForUpdate()->findOrFail($employee->id);
+                $previousPhoto = $current->photo;
+                $current->update($validated);
+                if ($userUpdates) {
+                    $current->user?->update($userUpdates);
+                }
+
+                return $previousPhoto;
+            });
+        } catch (\Throwable $e) {
+            if ($newPhoto) {
+                Storage::disk('public')->delete($newPhoto);
+            }
+            throw $e;
+        }
+
+        if ($newPhoto && $previousPhoto && $previousPhoto !== $newPhoto) {
+            Storage::disk('public')->delete($previousPhoto);
+        }
+
+        return redirect()->route('admin.index')->with('success', 'Data pegawai berhasil diperbarui.');
     }
 
     public function destroy($id)

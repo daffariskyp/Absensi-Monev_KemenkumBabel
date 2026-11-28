@@ -3,11 +3,11 @@
         <!-- Header -->
         <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
             <div>
-                <h1 class="text-2xl font-bold text-gray-800">Rekapan Absensi & Monev Pegawai Non-ASN</h1>
-                <p class="text-sm text-gray-500 mt-1">Laporan rekapitulasi kehadiran, foto wajah, monev harian, kendala (min 100 kar), dan bukti foto kegiatan.</p>
+                <h1 class="text-2xl font-bold text-gray-800">Rekap Bulanan Kehadiran &amp; Monev</h1>
+                <p class="text-sm text-gray-500 mt-1">Periode {{ $monthName }}</p>
             </div>
             <div class="flex items-center gap-3">
-                <a href="{{ route('attendance.print', request()->all()) }}" target="_blank"
+                <a href="{{ route('attendance.print', ['month' => $month, 'year' => $year, 'user_id' => $selectedUserId, 'status' => $statusFilter]) }}" target="_blank"
                     class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-semibold shadow flex items-center gap-2 transition">
                     <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
@@ -25,31 +25,36 @@
         </div>
 
         <!-- Summary Stat Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
+        <div class="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-6 gap-4 mb-6">
             <div class="bg-white border rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-gray-500 uppercase">Total Tercatat</div>
-                <div class="text-2xl font-bold text-gray-900 mt-1">{{ $stats['total'] }}</div>
+                <div class="text-2xl font-bold text-gray-900 mt-1" data-count-up>{{ $stats['total'] }}</div>
                 <div class="text-[11px] text-gray-400 mt-0.5">Hari Kerja</div>
             </div>
             <div class="bg-white border border-emerald-100 rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-emerald-600 uppercase">Hadir Tepat Waktu</div>
-                <div class="text-2xl font-bold text-emerald-700 mt-1">{{ $stats['tepat_waktu'] }}</div>
+                <div class="text-2xl font-bold text-emerald-700 mt-1" data-count-up>{{ $stats['tepat_waktu'] }}</div>
                 <div class="text-[11px] text-emerald-500 mt-0.5">Sesuai Ketentuan Jam</div>
             </div>
             <div class="bg-white border border-amber-100 rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-amber-600 uppercase">Hadir Terlambat</div>
-                <div class="text-2xl font-bold text-amber-700 mt-1">{{ $stats['terlambat'] }}</div>
+                <div class="text-2xl font-bold text-amber-700 mt-1" data-count-up>{{ $stats['terlambat'] }}</div>
                 <div class="text-[11px] text-amber-500 mt-0.5">Melewati Batas Masuk</div>
             </div>
             <div class="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-blue-600 uppercase">Izin / Cuti</div>
-                <div class="text-2xl font-bold text-blue-700 mt-1">{{ $stats['izin'] }}</div>
+                <div class="text-2xl font-bold text-blue-700 mt-1" data-count-up>{{ $stats['izin'] }}</div>
                 <div class="text-[11px] text-blue-500 mt-0.5">Disetujui Atasan</div>
             </div>
             <div class="bg-white border border-purple-100 rounded-xl p-4 shadow-sm">
                 <div class="text-xs font-semibold text-purple-600 uppercase">Sakit</div>
-                <div class="text-2xl font-bold text-purple-700 mt-1">{{ $stats['sakit'] }}</div>
+                <div class="text-2xl font-bold text-purple-700 mt-1" data-count-up>{{ $stats['sakit'] }}</div>
                 <div class="text-[11px] text-purple-500 mt-0.5">Surat Dokter</div>
+            </div>
+            <div class="bg-white border border-blue-100 rounded-xl p-4 shadow-sm">
+                <div class="text-xs font-semibold text-blue-700 uppercase">Kegiatan Monev</div>
+                <div class="text-2xl font-bold text-blue-900 mt-1" data-count-up>{{ $activities->total() }}</div>
+                <div class="text-[11px] text-blue-700 mt-0.5">Tercatat bulan ini</div>
             </div>
         </div>
 
@@ -58,8 +63,8 @@
             <form action="" method="GET" class="flex flex-wrap items-center gap-4">
                 <!-- Filter Bulan -->
                 <div class="flex items-center gap-2">
-                    <label class="text-xs font-semibold text-gray-700">Bulan:</label>
-                    <select name="month" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="this.form.submit()">
+                    <label for="recap-month" class="text-xs font-semibold text-gray-700">Bulan</label>
+                    <select id="recap-month" name="month" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500">
                         @for($m = 1; $m <= 12; $m++)
                             <option value="{{ $m }}" {{ $month == $m ? 'selected' : '' }}>
                                 {{ Carbon\Carbon::create(null, $m, 1)->locale('id')->translatedFormat('F') }}
@@ -70,19 +75,15 @@
 
                 <!-- Filter Tahun -->
                 <div class="flex items-center gap-2">
-                    <label class="text-xs font-semibold text-gray-700">Tahun:</label>
-                    <select name="year" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="this.form.submit()">
-                        @for($y = Carbon\Carbon::now()->year - 2; $y <= Carbon\Carbon::now()->year + 1; $y++)
-                            <option value="{{ $y }}" {{ $year == $y ? 'selected' : '' }}>{{ $y }}</option>
-                        @endfor
-                    </select>
+                    <label for="recap-year" class="text-xs font-semibold text-gray-700">Tahun</label>
+                    <input id="recap-year" name="year" type="number" value="{{ $year }}" min="1900" max="9998" class="w-24 text-sm border border-gray-300 rounded-lg p-2 bg-gray-50" required>
                 </div>
 
-                <!-- Filter Pegawai (Admin) -->
-                @if(auth()->user()->role === 'admin')
+                <!-- Filter Pegawai (Admin & Supervisor / Kabag) -->
+                @if($canManageAll)
                     <div class="flex items-center gap-2">
-                        <label class="text-xs font-semibold text-gray-700">Pegawai Non-ASN:</label>
-                        <select name="user_id" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="this.form.submit()">
+                        <label for="recap-employee" class="text-xs font-semibold text-gray-700">Pegawai</label>
+                        <select id="recap-employee" name="user_id" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500">
                             <option value="">Semua Pegawai</option>
                             @foreach($employees as $empUser)
                                 <option value="{{ $empUser->id }}" {{ $selectedUserId == $empUser->id ? 'selected' : '' }}>
@@ -95,8 +96,8 @@
 
                 <!-- Filter Status -->
                 <div class="flex items-center gap-2">
-                    <label class="text-xs font-semibold text-gray-700">Status:</label>
-                    <select name="status" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500" onchange="this.form.submit()">
+                    <label for="recap-status" class="text-xs font-semibold text-gray-700">Status kehadiran</label>
+                    <select id="recap-status" name="status" class="text-sm border border-gray-300 rounded-lg p-2 bg-gray-50 focus:outline-none focus:ring-1 focus:ring-blue-500">
                         <option value="">Semua Status</option>
                         <option value="hadir" {{ $statusFilter === 'hadir' ? 'selected' : '' }}>Hadir</option>
                         <option value="terlambat" {{ $statusFilter === 'terlambat' ? 'selected' : '' }}>Terlambat</option>
@@ -105,14 +106,13 @@
                     </select>
                 </div>
 
-                <noscript>
-                    <button type="submit" class="px-4 py-2 bg-gray-800 text-white text-xs rounded">Filter</button>
-                </noscript>
+                <button type="submit" class="app-action">Tampilkan rekap</button>
             </form>
         </div>
 
         <!-- Table Data -->
         <div class="bg-white border rounded-xl overflow-hidden shadow-sm">
+            <h2 class="p-4 text-base font-bold text-gray-800">Catatan kehadiran</h2>
             <div class="overflow-x-auto">
                 <table class="w-full border-collapse text-left">
                     <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-semibold">
@@ -205,22 +205,25 @@
                                     @endif
                                 </td>
                                 <td class="py-3 px-3 text-center">
-                                    @if($att->monev_activity || $att->monev_obstacle)
+                                    @php
+                                        $hasDailyMonev = isset($att->daily_monev_activities) && $att->daily_monev_activities->isNotEmpty();
+                                        $hasLegacyMonev = !empty($att->monev_activity) || !empty($att->monev_obstacle);
+                                        $countAct = $hasDailyMonev ? $att->daily_monev_activities->count() : ($hasLegacyMonev ? 1 : 0);
+                                    @endphp
+                                    @if($hasDailyMonev || $hasLegacyMonev)
                                         <button type="button" onclick="loadMonevDetail({{ $att->id }})"
-                                            class="inline-flex items-center gap-1 px-3 py-1 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-semibold rounded-lg border border-indigo-200 transition">
+                                            class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 text-xs font-bold rounded-xl border border-indigo-200 transition shadow-sm hover:shadow">
                                             <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
                                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
                                             </svg>
-                                            Detail Monev
-                                            @if(!empty($att->activity_photos))
-                                                <span class="size-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center font-bold">
-                                                    {{ count($att->activity_photos) }}
-                                                </span>
-                                            @endif
+                                            <span>Lihat Monev</span>
+                                            <span class="px-1.5 py-0.5 rounded-full bg-indigo-600 text-white text-[10px] font-bold">
+                                                {{ $countAct }}
+                                            </span>
                                         </button>
                                     @else
-                                        <span class="text-xs text-gray-400">Tidak ada monev</span>
+                                        <span class="text-xs text-gray-400 italic">Tidak ada monev</span>
                                     @endif
                                 </td>
                             </tr>
@@ -236,9 +239,23 @@
             </div>
 
             <div class="p-4 border-t">
-                {{ $attendances->links() }}
+                {{ $attendances->withQueryString()->links() }}
             </div>
         </div>
+        <section class="mt-6 bg-white border rounded-xl overflow-hidden shadow-sm" id="rekap-monev">
+            <div class="p-4">
+                <h2 class="text-base font-bold text-gray-800">Aktivitas Monev bulanan</h2>
+                <p class="text-xs text-gray-600 mt-1">Daftar aktivitas mengikuti periode dan pegawai yang dipilih.</p>
+            </div>
+            <div class="overflow-x-auto">
+                @include('attendance.monthly-activities')
+            </div>
+            @if($activities->hasPages())
+                <div class="p-4 border-t">
+                    {{ $activities->withQueryString()->fragment('rekap-monev')->links() }}
+                </div>
+            @endif
+        </section>
     </div>
 
     <!-- Monev Detail Modal (Fixed Closing) -->
@@ -265,27 +282,18 @@
                     </div>
                 </div>
 
-                <!-- Uraian Aktivitas -->
-                <div>
-                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">1. Uraian Aktivitas Pekerjaan Hari Ini:</h4>
-                    <div id="mActivity" class="p-3 bg-gray-50 rounded-lg border text-gray-700 whitespace-pre-line leading-relaxed text-xs"></div>
+                <!-- Total Monev Count Banner -->
+                <div class="flex items-center justify-between p-3 bg-indigo-50 border border-indigo-200 rounded-xl">
+                    <span class="text-xs font-bold text-indigo-900">Total Kegiatan yang Dilaporkan:</span>
+                    <span id="mTotalActivities" class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-600 text-white">0 Kegiatan</span>
                 </div>
 
-                <!-- Kendala yang Dihadapi (Min 100 Karakter) -->
-                <div>
-                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-1">2. Kendala yang Dihadapi (Minimal 100 Karakter):</h4>
-                    <div id="mObstacle" class="p-3 bg-amber-50/60 border border-amber-200 rounded-lg text-amber-900 whitespace-pre-line leading-relaxed text-xs"></div>
-                </div>
-
-                <!-- Bukti Foto Kegiatan (Maks 3 Foto) -->
-                <div>
-                    <h4 class="text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">3. Bukti Foto Kegiatan (Dokumentasi Lapangan):</h4>
-                    <div id="mPhotos" class="grid grid-cols-3 gap-3"></div>
-                </div>
+                <!-- Container Semua Kegiatan (Maks 10) -->
+                <div id="mActivitiesList" class="space-y-3"></div>
             </div>
 
             <div class="mt-6 pt-4 border-t flex justify-end">
-                <button type="button" onclick="closeMonevModal()" class="px-5 py-2 bg-gray-200 hover:bg-gray-300 rounded-lg text-xs font-semibold text-gray-700 transition">
+                <button type="button" onclick="closeMonevModal()" class="btn-colorful px-5 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 rounded-xl text-xs font-bold text-white shadow-md transition border border-transparent">
                     Tutup
                 </button>
             </div>
@@ -303,7 +311,7 @@
                 <img id="photoModalImg" src="" class="max-h-[75vh] object-contain rounded">
             </div>
             <div class="p-3 bg-gray-50 border-t flex justify-end">
-                <button type="button" onclick="closePhotoModal()" class="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-lg transition">
+                <button type="button" onclick="closePhotoModal()" class="btn-colorful px-5 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 text-white text-xs font-bold rounded-xl shadow-md transition border border-transparent">
                     Tutup
                 </button>
             </div>
@@ -319,22 +327,61 @@
                     document.getElementById('mPegawaiRole').innerText = data.role;
                     document.getElementById('mDate').innerText = data.date;
                     document.getElementById('mTimes').innerText = `${data.check_in_time} WIB - ${data.check_out_time} WIB`;
-                    document.getElementById('mActivity').innerText = data.monev_activity;
-                    document.getElementById('mObstacle').innerText = data.monev_obstacle;
 
-                    const photosContainer = document.getElementById('mPhotos');
-                    photosContainer.innerHTML = '';
+                    const totalCount = data.total_activities || (data.activities ? data.activities.length : 0);
+                    document.getElementById('mTotalActivities').innerText = `${totalCount} Kegiatan`;
 
-                    if (data.activity_photos && data.activity_photos.length > 0) {
-                        data.activity_photos.forEach(photoUrl => {
-                            const img = document.createElement('img');
-                            img.src = photoUrl;
-                            img.className = "w-full aspect-video object-cover rounded-lg border cursor-pointer hover:opacity-90 shadow-sm transition";
-                            img.onclick = () => openPhotoModal(photoUrl, 'Bukti Foto Kegiatan');
-                            photosContainer.appendChild(img);
+                    const container = document.getElementById('mActivitiesList');
+                    container.innerHTML = '';
+
+                    if (data.activities && data.activities.length > 0) {
+                        data.activities.forEach(act => {
+                            let photosHtml = '';
+                            if (act.photos && act.photos.length > 0) {
+                                photosHtml = `
+                                    <div class="pt-2">
+                                        <span class="font-semibold text-gray-600 text-xs block mb-1">Bukti Foto:</span>
+                                        <div class="flex flex-wrap gap-2">
+                                            ${act.photos.map(p => `
+                                                <img src="${p}" class="size-16 rounded-lg object-cover border-2 border-indigo-200 cursor-pointer hover:opacity-90 shadow-sm"
+                                                     onclick="openPhotoModal('${p}', 'Bukti Foto Kegiatan #${act.index}')">
+                                            `).join('')}
+                                        </div>
+                                    </div>
+                                `;
+                            }
+
+                            const card = document.createElement('div');
+                            card.className = "bg-gray-50 rounded-xl p-3.5 border border-gray-200 text-xs space-y-1.5";
+                            card.innerHTML = `
+                                <div class="flex items-center justify-between pb-1 border-b border-gray-200">
+                                    <span class="font-bold px-2 py-0.5 rounded bg-indigo-600 text-white">Kegiatan #${act.index}</span>
+                                    <span class="text-gray-500 font-medium">Jam ${act.time} WIB</span>
+                                </div>
+                                <div class="text-gray-800">
+                                    <span class="font-bold text-gray-700">Uraian:</span>
+                                    <p class="mt-0.5 leading-relaxed">${act.activity_description}</p>
+                                </div>
+                                ${act.obstacle && act.obstacle !== 'Tidak ada kendala' ? `
+                                    <div class="text-amber-900 bg-amber-50/70 p-2 rounded border border-amber-200">
+                                        <span class="font-bold">Kendala:</span> ${act.obstacle}
+                                    </div>
+                                ` : ''}
+                                ${photosHtml}
+                            `;
+                            container.appendChild(card);
                         });
+                    } else if (data.monev_activity && data.monev_activity !== 'Belum ada uraian aktivitas.') {
+                        // Fallback legacy display
+                        const card = document.createElement('div');
+                        card.className = "bg-gray-50 rounded-xl p-3.5 border text-xs space-y-1.5";
+                        card.innerHTML = `
+                            <div class="text-gray-800"><span class="font-bold">Uraian:</span> ${data.monev_activity}</div>
+                            <div class="text-amber-900"><span class="font-bold">Kendala:</span> ${data.monev_obstacle}</div>
+                        `;
+                        container.appendChild(card);
                     } else {
-                        photosContainer.innerHTML = '<span class="text-xs text-gray-400 col-span-3">Tidak ada foto kegiatan yang diunggah.</span>';
+                        container.innerHTML = '<div class="text-center py-6 text-gray-400 text-xs">Belum ada kegiatan monev yang dicatat pada tanggal ini.</div>';
                     }
 
                     document.getElementById('monevModal').style.display = 'flex';

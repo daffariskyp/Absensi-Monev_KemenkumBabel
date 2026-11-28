@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Attendance;
 use App\Models\Employee;
+use App\Models\MonevActivity;
 use App\Models\OfficeSetting;
 use App\Models\User;
 use Carbon\Carbon;
@@ -12,6 +13,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 
 class AttendanceController extends Controller
 {
@@ -26,8 +28,9 @@ class AttendanceController extends Controller
     public function index()
     {
         $user = auth()->user();
-        $today = Carbon::today(Attendance::TIMEZONE)->toDateString();
-        $yesterday = Carbon::yesterday(Attendance::TIMEZONE)->toDateString();
+        $now = Carbon::now(Attendance::TIMEZONE);
+        $today = $now->toDateString();
+        $yesterday = $now->copy()->subDay()->toDateString();
         $office = OfficeSetting::getActive();
         $isSatpam = $user->employee ? $user->employee->isSatpam() : false;
         $isWorkDayToday = $user->employee ? $user->employee->isWorkDay(Carbon::now(Attendance::TIMEZONE)) : true;
@@ -56,16 +59,54 @@ class AttendanceController extends Controller
                 ->first();
         }
 
+        // Ambil semua entri kegiatan monev hari ini
+        if ($user->role === 'admin') {
+            $todayActivities = MonevActivity::with(['user.employee.role'])
+                ->whereDate('date', $today)
+                ->orderBy('time', 'desc')
+                ->get();
+        } else {
+            $todayActivities = MonevActivity::where('user_id', $user->id)
+                ->whereDate('date', $today)
+                ->orderBy('time', 'asc')
+                ->get();
+        }
+
+        $activityCount = $todayActivities->count();
+        $isBeforeClosingTime = $now->format('H:i') <= '14:30';
+        $canSubmitMonev = ($user->role !== 'admin') && $isBeforeClosingTime && ($activityCount < 10);
+
+        // Cek pengajuan cuti pending atau yang sedang aktif hari ini untuk user
+        $userPendingLeave = \App\Models\Administration::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->latest()
+            ->first();
+
+        $todayApprovedLeave = \App\Models\Administration::where('user_id', $user->id)
+            ->where('status', 'approved')
+            ->whereDate('start_date', '<=', $today)
+            ->whereDate('end_date', '>=', $today)
+            ->first();
+
         return view('attendance.index', [
             'title' => 'Absensi & Monev Non-ASN',
             'active' => 'attendance',
             'user' => $user,
             'attendance' => $attendance,
             'office' => $office,
-            'today' => Carbon::now(Attendance::TIMEZONE)->locale('id')->translatedFormat('l, d F Y'),
+            'today' => $now->locale('id')->translatedFormat('l, d F Y'),
+            'todayActivities' => $todayActivities,
+            'activityCount' => $activityCount,
+            'isBeforeClosingTime' => $isBeforeClosingTime,
+            'canSubmitMonev' => $canSubmitMonev,
+            'monevClosingTime' => '14:30',
+            'userPendingLeave' => $userPendingLeave,
+            'todayApprovedLeave' => $todayApprovedLeave,
             'isSatpam' => $isSatpam,
             'isWorkDayToday' => $isWorkDayToday,
             'isOvernight' => $isOvernight,
+            'needsCheckoutMonev' => $attendance?->check_in_time && !$attendance->check_out_time
+                && !$this->hasShiftMonev($attendance),
         ]);
     }
 
@@ -195,7 +236,7 @@ class AttendanceController extends Controller
     }
 
     /**
-     * Absen Pulang dengan Monev Aktivitas, Kendala (Min 100 kar), Bukti Foto (Maks 3), dan Foto Wajah
+     * Absen Pulang Hanya dengan Foto Wajah & Validasi Titik Lokasi Kantor
      */
     public function checkOut(Request $request)
     {
@@ -203,22 +244,16 @@ class AttendanceController extends Controller
             'latitude' => 'required|numeric',
             'longitude' => 'required|numeric',
             'photo' => 'required|string', // Foto wajah pulang (base64)
-            'monev_activity' => 'required|string|min:10',
-            'monev_obstacle' => 'required|string|min:100', // MINIMAL 100 KARAKTER SESUAI PERMINTAAN USER!
-            'activity_photos' => 'nullable|array|max:3', // MAKSIMAL 3 FOTO KEGIATAN!
-            'activity_photos.*' => 'image|mimes:jpeg,png,jpg|max:3072',
         ], [
             'photo.required' => 'Foto wajah saat pulang wajib diambil menggunakan kamera.',
-            'monev_activity.required' => 'Uraian aktivitas harian wajib diisi.',
-            'monev_activity.min' => 'Uraian aktivitas minimal 10 karakter.',
-            'monev_obstacle.required' => 'Kendala yang dihadapi wajib diisi minimal 100 karakter.',
-            'monev_obstacle.min' => 'Kendala yang dilakukan/dihadapi wajib minimal 100 karakter.',
-            'activity_photos.max' => 'Bukti foto kegiatan maksimal 3 foto.',
+            'latitude.required' => 'Titik lokasi GPS diperlukan untuk absensi pulang.',
+            'longitude.required' => 'Titik lokasi GPS diperlukan untuk absensi pulang.',
         ]);
 
         $user = auth()->user();
-        $today = Carbon::today(Attendance::TIMEZONE)->toDateString();
-        $yesterday = Carbon::yesterday(Attendance::TIMEZONE)->toDateString();
+        $now = Carbon::now(Attendance::TIMEZONE);
+        $today = $now->toDateString();
+        $yesterday = $now->copy()->subDay()->toDateString();
         $office = OfficeSetting::getActive();
         $isSatpam = $user->employee ? $user->employee->isSatpam() : false;
 
@@ -256,6 +291,18 @@ class AttendanceController extends Controller
             return redirect()->back();
         }
 
+        $checkoutMonev = $this->hasShiftMonev($attendance) ? null : $request->validate([
+            'monev_activity' => 'required|string|min:10',
+            'monev_obstacle' => 'required|string|min:100',
+            'activity_photos' => 'nullable|array|max:3',
+            'activity_photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:3072',
+        ], [
+            'monev_activity.required' => 'Uraian aktivitas wajib diisi.',
+            'monev_activity.min' => 'Uraian aktivitas minimal 10 karakter.',
+            'monev_obstacle.required' => 'Kendala yang dihadapi wajib diisi.',
+            'monev_obstacle.min' => 'Kendala yang dihadapi minimal 100 karakter.',
+        ]);
+
         // Cek Geofencing lokasi kantor saat pulang
         $distance = $this->calculateDistance(
             (float) $request->latitude,
@@ -277,30 +324,29 @@ class AttendanceController extends Controller
         // Simpan foto wajah pulang
         $photoPath = $this->saveBase64Image($request->photo, 'attendance_checkout');
 
-        // Simpan bukti foto kegiatan (maksimal 3 foto)
-        $activityPhotoPaths = [];
-        if ($request->hasFile('activity_photos')) {
-            $files = array_slice($request->file('activity_photos'), 0, 3);
-            foreach ($files as $file) {
-                $path = $file->store('activity_photos', 'public');
-                $activityPhotoPaths[] = $path;
+        $photos = $checkoutMonev ? $this->storeMonevPhotos($request) : [];
+        DB::transaction(function () use ($attendance, $now, $photoPath, $request, $distance, $checkoutMonev, $photos) {
+            $attendance->update([
+                'check_out_time' => $now->toTimeString(),
+                'check_out_photo' => $photoPath,
+                'check_out_lat' => $request->latitude,
+                'check_out_lng' => $request->longitude,
+                'check_out_distance' => $distance,
+            ]);
+
+            if ($checkoutMonev) {
+                MonevActivity::create([
+                    'user_id' => $attendance->user_id,
+                    'date' => $attendance->date,
+                    'time' => $now->toTimeString(),
+                    'activity_description' => $checkoutMonev['monev_activity'],
+                    'obstacle' => $checkoutMonev['monev_obstacle'],
+                    'photos' => $photos,
+                ]);
             }
-        }
+        });
 
-        $now = Carbon::now(Attendance::TIMEZONE);
-
-        $attendance->update([
-            'check_out_time' => $now->toTimeString(),
-            'check_out_photo' => $photoPath,
-            'check_out_lat' => $request->latitude,
-            'check_out_lng' => $request->longitude,
-            'check_out_distance' => $distance,
-            'monev_activity' => $request->monev_activity,
-            'monev_obstacle' => $request->monev_obstacle,
-            'activity_photos' => $activityPhotoPaths,
-        ]);
-
-        $successMsg = 'Absen pulang dan pelaporan monev kegiatan berhasil disimpan pada jam ' . $now->format('H:i');
+        $successMsg = 'Absen pulang berhasil diverifikasi dan disimpan pada jam ' . $now->format('H:i') . ' WIB.';
 
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'message' => $successMsg]);
@@ -311,41 +357,125 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Simpan Kegiatan Monev Harian Pegawai (Maks 10 kegiatan, batas jam 14:30 WIB)
+     */
+    public function storeMonev(Request $request)
+    {
+        $now = Carbon::now(Attendance::TIMEZONE);
+        $today = $now->toDateString();
+        $user = auth()->user();
+
+        // 1. Validasi Batas Waktu Pengisian (Maksimal jam 14:30 WIB)
+        if ($now->format('H:i') > '14:30') {
+            $msg = 'Batas waktu pengisian monev kegiatan hari ini adalah sampai pukul 14:30 WIB. Form pengisian telah ditutup.';
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            notify()->error($msg, 'Waktu Berakhir');
+            return redirect()->back();
+        }
+
+        // 2. Validasi Kuota Maksimal 10 Kegiatan Per Hari
+        $existingCount = MonevActivity::where('user_id', $user->id)
+            ->whereDate('date', $today)
+            ->count();
+
+        if ($existingCount >= 10) {
+            $msg = 'Anda telah mencapai batas kuota maksimal 10 kegiatan untuk hari ini.';
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => $msg], 422);
+            }
+            notify()->error($msg, 'Batas Kuota Tercapai');
+            return redirect()->back();
+        }
+
+        $validated = $request->validate([
+            'activity_description' => 'required|string|min:5',
+            'obstacle' => 'nullable|string',
+            'activity_photos' => 'nullable|array|max:3',
+            'activity_photos.*' => 'image|mimes:jpeg,png,jpg,webp|max:3072',
+        ], [
+            'activity_description.required' => 'Uraian aktivitas kegiatan pekerjaan wajib diisi.',
+            'activity_description.min' => 'Uraian aktivitas minimal 5 karakter.',
+            'activity_photos.max' => 'Maksimal hanya dapat melampirkan 3 foto kegiatan.',
+        ]);
+
+        MonevActivity::create([
+            'user_id' => $user->id,
+            'date' => $today,
+            'time' => $now->toTimeString(),
+            'activity_description' => $validated['activity_description'],
+            'obstacle' => $request->input('obstacle', 'Tidak ada kendala'),
+            'photos' => $this->storeMonevPhotos($request),
+        ]);
+
+        $newCount = $existingCount + 1;
+        $successMsg = "Kegiatan #{$newCount} berhasil dicatat (Total: {$newCount} dari 10 kegiatan).";
+
+        if ($request->wantsJson()) {
+            return response()->json(['success' => true, 'message' => $successMsg]);
+        }
+
+        notify()->success($successMsg, 'Tersimpan');
+        return redirect()->route('attendance.index');
+    }
+
+    /**
+     * Hapus Entri Kegiatan Monev Harian
+     */
+    public function destroyMonev($id)
+    {
+        $activity = MonevActivity::findOrFail($id);
+        $user = auth()->user();
+
+        if ($user->role !== 'admin' && $activity->user_id !== $user->id) {
+            abort(403);
+        }
+
+        // Hapus foto jika ada
+        if (!empty($activity->photos)) {
+            foreach ($activity->photos as $p) {
+                if (Storage::disk('public')->exists($p)) {
+                    Storage::disk('public')->delete($p);
+                }
+            }
+        }
+
+        $activity->delete();
+        notify()->success('Entri kegiatan berhasil dihapus.', 'Berhasil');
+        return redirect()->back();
+    }
+
+    /**
      * Rekapan Absensi Karyawan Non-ASN
      */
     public function recap(Request $request)
     {
-        $user = auth()->user();
-        $month = $request->input('month', Carbon::now(Attendance::TIMEZONE)->month);
-        $year = $request->input('year', Carbon::now(Attendance::TIMEZONE)->year);
-        $selectedUserId = $request->input('user_id');
-        $statusFilter = $request->input('status');
+        $period = $this->recapPeriod($request);
+        $statsQuery = $this->recapQuery(new Attendance, $period);
+        $query = (clone $statsQuery)->with('user.employee.role');
 
-        $query = Attendance::with(['user.employee.role'])
-            ->whereMonth('date', $month)
-            ->whereYear('date', $year);
-
-        // Jika bukan admin, hanya bisa melihat rekapan dirinya sendiri
-        if ($user->role !== 'admin') {
-            $query->where('user_id', $user->id);
-        } else {
-            if ($selectedUserId) {
-                $query->where('user_id', $selectedUserId);
-            }
+        if ($period['statusFilter']) {
+            $query->where('status', $period['statusFilter']);
         }
 
-        if ($statusFilter) {
-            $query->where('status', $statusFilter);
-        }
+        $attendances = $query->orderByDesc('date')->orderBy('id')->paginate(15);
+        $activities = $this->recapQuery(new MonevActivity, $period)
+            ->with('user.employee.role')->orderByDesc('date')->orderByDesc('time')->orderByDesc('id')
+            ->paginate(15, ['*'], 'activity_page');
 
-        $attendances = $query->orderBy('date', 'desc')->paginate(15);
+        // Attach kegiatan monev harian ke setiap baris absensi
+        $userIds = $attendances->pluck('user_id')->unique();
+        $dates = $attendances->pluck('date')->map(fn($d) => Carbon::parse($d)->toDateString())->unique();
 
-        // Ringkasan Statistik
-        $statsQuery = Attendance::whereMonth('date', $month)->whereYear('date', $year);
-        if ($user->role !== 'admin') {
-            $statsQuery->where('user_id', $user->id);
-        } elseif ($selectedUserId) {
-            $statsQuery->where('user_id', $selectedUserId);
+        $allMonev = MonevActivity::whereIn('user_id', $userIds)
+            ->whereIn(DB::raw('DATE(date)'), $dates)
+            ->get()
+            ->groupBy(fn($m) => $m->user_id . '_' . Carbon::parse($m->date)->toDateString());
+
+        foreach ($attendances as $att) {
+            $key = $att->user_id . '_' . Carbon::parse($att->date)->toDateString();
+            $att->daily_monev_activities = $allMonev->get($key, collect());
         }
 
         $totalRecords = (clone $statsQuery)->count();
@@ -355,16 +485,14 @@ class AttendanceController extends Controller
         $totalIzin = (clone $statsQuery)->where('status', 'izin')->count();
         $totalSakit = (clone $statsQuery)->where('status', 'sakit')->count();
 
-        $employees = ($user->role === 'admin') ? User::with('employee.role')->get() : collect([$user]);
+        $employees = $period['canManageAll'] ? User::with('employee.role')->orderBy('name')->get() : collect();
 
         return view('attendance.recap', [
+            ...$period,
             'title' => 'Rekapan Absensi & Monev Non-ASN',
             'active' => 'attendance_recap',
             'attendances' => $attendances,
-            'month' => $month,
-            'year' => $year,
-            'selectedUserId' => $selectedUserId,
-            'statusFilter' => $statusFilter,
+            'activities' => $activities,
             'employees' => $employees,
             'stats' => [
                 'total' => $totalRecords,
@@ -382,39 +510,89 @@ class AttendanceController extends Controller
      */
     public function printRecap(Request $request)
     {
-        $user = auth()->user();
-        $month = $request->input('month', Carbon::now(Attendance::TIMEZONE)->month);
-        $year = $request->input('year', Carbon::now(Attendance::TIMEZONE)->year);
-        $selectedUserId = $request->input('user_id');
-
-        $query = Attendance::with(['user.employee.role'])
-            ->whereMonth('date', $month)
-            ->whereYear('date', $year)
-            ->orderBy('date', 'asc');
-
-        if ($user->role !== 'admin') {
-            $query->where('user_id', $user->id);
-            $targetUser = $user;
-        } else {
-            if ($selectedUserId) {
-                $query->where('user_id', $selectedUserId);
-                $targetUser = User::find($selectedUserId);
-            } else {
-                $targetUser = null;
-            }
-        }
-
-        $attendances = $query->get();
+        $period = $this->recapPeriod($request, allowYearly: true);
+        $targetUser = $period['selectedUserId'] ? User::with('employee.role')->find($period['selectedUserId']) : null;
+        $attendances = $this->recapQuery(new Attendance, $period)->with('user')
+            ->when($period['statusFilter'], fn ($query, $status) => $query->where('status', $status))
+            ->orderBy('date')->orderBy('id')->get();
+        $activities = $this->recapQuery(new MonevActivity, $period)->with('user')
+            ->orderBy('date')->orderBy('time')->orderBy('id')->get();
         $office = OfficeSetting::getActive();
 
+        // Tanda Tangan QR Code Digital untuk Rekap Absensi
+        $periodLabel = $period['monthName'];
+        $qrData = "KEMENTERIAN HUKUM RI\n" .
+                  "DOKUMEN RESMI REKAPITULASI ABSENSI PEGAWAI NON-ASN\n" .
+                  "PERIODE: {$periodLabel}\n" .
+                  "LOKASI: " . ($office->office_name ?? 'Kantor Wilayah') . "\n" .
+                  "TOTAL REKAP: " . $attendances->count() . " catatan kehadiran, " . $activities->count() . " kegiatan Monev\n" .
+                  "STATUS: TERVERIFIKASI SISTEM ELEKTRONIK\n" .
+                  "PENANGGUNG JAWAB: Kasubag Kepegawaian & Tata Usaha\n" .
+                  "WAKTU CETAK: " . Carbon::now()->format('d/m/Y H:i') . " WIB";
+        $qrSvg = \App\Helpers\QrCodeHelper::generateSvg($qrData, 120);
+
         return view('attendance.print', [
-            'title' => 'Cetak Rekap Absensi Non-ASN',
+            ...$period,
+            'title' => $period['yearly'] ? 'Cetak Rekap Tahunan Kehadiran & Monev' : 'Cetak Rekap Bulanan Kehadiran & Monev',
             'attendances' => $attendances,
+            'activities' => $activities,
+            'office' => $office,
+            'targetUser' => $targetUser,
+            'qrSvg' => $qrSvg,
+        ]);
+    }
+
+    private function hasShiftMonev(Attendance $attendance): bool
+    {
+        return (bool) $attendance->monev_activity || MonevActivity::query()
+            ->where('user_id', $attendance->user_id)
+            ->whereDate('date', $attendance->date)
+            ->exists();
+    }
+
+    private function storeMonevPhotos(Request $request): array
+    {
+        $paths = [];
+        foreach ($request->file('activity_photos', []) as $photo) {
+            $paths[] = $photo->store('monev_activity_photos', 'public');
+        }
+
+        return $paths;
+    }
+
+    private function recapPeriod(Request $request, bool $allowYearly = false): array
+    {
+        $validated = $request->validate([
+            'month' => ['nullable', Rule::in($allowYearly ? [...range(1, 12), 'all'] : range(1, 12))],
+            'year' => 'nullable|integer|between:1900,9998',
+            'user_id' => 'nullable|integer|min:1',
+            'status' => 'nullable|in:hadir,terlambat,izin,sakit',
+        ]);
+        $now = Carbon::now();
+        $yearly = ($validated['month'] ?? null) === 'all';
+        $month = $yearly ? null : (int) ($validated['month'] ?? $now->month);
+        $year = (int) ($validated['year'] ?? $now->year);
+        $start = Carbon::create($year, $month ?? 1, 1);
+        $user = $request->user();
+        $canManageAll = in_array($user->role, ['admin', 'supervisor'], true);
+
+        return [
             'month' => $month,
             'year' => $year,
-            'targetUser' => $targetUser,
-            'office' => $office,
-        ]);
+            'yearly' => $yearly,
+            'monthName' => $yearly ? 'Januari–Desember ' . $year : $start->locale('id')->translatedFormat('F Y'),
+            'startDate' => $start->toDateString(),
+            'endDate' => ($yearly ? $start->copy()->endOfYear() : $start->copy()->endOfMonth())->toDateString(),
+            'canManageAll' => $canManageAll,
+            'selectedUserId' => $canManageAll ? ($validated['user_id'] ?? null) : $user->id,
+            'statusFilter' => $validated['status'] ?? null,
+        ];
+    }
+
+    private function recapQuery(Attendance|MonevActivity $model, array $period): \Illuminate\Database\Eloquent\Builder
+    {
+        return $model->newQuery()->whereDate('date', '>=', $period['startDate'])->whereDate('date', '<=', $period['endDate'])
+            ->when($period['selectedUserId'], fn ($query, $userId) => $query->where('user_id', $userId));
     }
 
     /**
@@ -468,15 +646,57 @@ class AttendanceController extends Controller
     }
 
     /**
+     * Kalibrasi cepat titik lokasi kantor ke koordinat GPS perangkat saat ini
+     */
+    public function calibrateOffice(Request $request)
+    {
+        abort_unless($request->user()->role === 'admin', 403);
+        $validated = $request->validate([
+            'latitude' => 'required|numeric',
+            'longitude' => 'required|numeric',
+            'radius_meters' => 'nullable|integer|min:50|max:5000',
+        ]);
+
+        $office = OfficeSetting::getActive();
+        $office->update([
+            'office_name' => 'Kanwil Kemenkumham Kepulauan Bangka Belitung',
+            'latitude' => $validated['latitude'],
+            'longitude' => $validated['longitude'],
+            'radius_meters' => $request->input('radius_meters', max(500, $office->radius_meters)),
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Titik lokasi kantor berhasil disesuaikan dengan posisi GPS Anda.',
+            'office' => $office,
+        ]);
+    }
+
+    /**
      * Detail Modal Monev
      */
     public function getMonevDetail($id)
     {
         $attendance = Attendance::with(['user.employee.role'])->findOrFail($id);
 
-        if (auth()->user()->role !== 'admin' && $attendance->user_id !== auth()->id()) {
+        if (!in_array(auth()->user()->role, ['admin', 'supervisor'], true) && $attendance->user_id !== auth()->id()) {
             return response()->json(['error' => 'Unauthorized'], 403);
         }
+
+        $activities = MonevActivity::where('user_id', $attendance->user_id)
+            ->whereDate('date', $attendance->date)
+            ->orderBy('time', 'asc')
+            ->get();
+
+        $formattedActivities = $activities->map(function ($act, $idx) {
+            return [
+                'index' => $idx + 1,
+                'time' => Carbon::parse($act->time)->format('H:i'),
+                'activity_description' => $act->activity_description,
+                'obstacle' => $act->obstacle ?? 'Tidak ada kendala',
+                'photos' => collect($act->photos ?? [])->map(fn($p) => asset('storage/' . $p))->values(),
+            ];
+        });
 
         return response()->json([
             'id' => $attendance->id,
@@ -489,10 +709,12 @@ class AttendanceController extends Controller
             'check_out_time' => $attendance->check_out_time ? Carbon::parse($attendance->check_out_time)->format('H:i') : '-',
             'check_out_photo' => $attendance->check_out_photo ? asset('storage/' . $attendance->check_out_photo) : null,
             'check_out_distance' => $attendance->check_out_distance,
-            'monev_activity' => $attendance->monev_activity ?? 'Belum ada uraian aktivitas.',
-            'monev_obstacle' => $attendance->monev_obstacle ?? 'Tidak ada kendala yang dilaporkan.',
+            'monev_activity' => $attendance->monev_activity ?? ($activities->first()?->activity_description ?? 'Belum ada uraian aktivitas.'),
+            'monev_obstacle' => $attendance->monev_obstacle ?? ($activities->first()?->obstacle ?? 'Tidak ada kendala.'),
             'activity_photos' => collect($attendance->activity_photos ?? [])->map(fn($p) => asset('storage/' . $p))->values(),
             'status' => $attendance->status,
+            'total_activities' => $activities->count(),
+            'activities' => $formattedActivities,
         ]);
     }
 

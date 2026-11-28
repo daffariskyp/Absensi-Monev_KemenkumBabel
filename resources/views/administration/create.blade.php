@@ -102,11 +102,13 @@
                     <!-- Buttons -->
                     <div class="flex items-center justify-between pt-6 border-t">
                         <a href="{{ route('attendance.index') }}" 
-                            class="px-5 py-2 border border-gray-300 bg-gray-50 text-gray-700 rounded-lg hover:bg-gray-100 font-semibold text-xs transition flex items-center gap-1.5">
+                            class="btn-colorful px-5 py-2.5 border border-gray-300 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-xl font-bold text-xs transition flex items-center gap-1.5 shadow-sm active:shadow-inner">
                             <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18" /></svg>
                             Kembali ke Absensi
                         </a>
-                        <button type="submit" class="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs shadow transition flex items-center gap-2">
+                        <button type="submit"
+                            style="background-color: #2563eb; color: #ffffff !important; border: 2px solid #facc15;"
+                            class="btn-colorful px-7 py-2.5 hover:bg-blue-700 text-white rounded-xl font-black text-sm shadow-lg hover:shadow-xl transition flex items-center gap-2 active:shadow-inner cursor-pointer">
                             <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" /></svg>
                             Kirim Permohonan Izin / Cuti
                         </button>
@@ -142,11 +144,17 @@
                                 @endif
                             </div>
 
-                            <div>
+                            <div class="flex items-center gap-2">
                                 @if($past->status === 'approved')
                                     <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-800">
                                         &check; Disetujui
                                     </span>
+                                    <a href="{{ route('administration.print', $past->id) }}" target="_blank"
+                                        class="btn-colorful px-3 py-1 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white rounded-lg text-[11px] font-bold shadow-sm transition flex items-center gap-1 border border-transparent"
+                                        title="Download Surat Bukti Cuti Resmi dengan TTD QR">
+                                        <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v1m6 11h2m-6 0h-2v4m0-11v3m0 0h.01M12 12h4.01M16 20h4M4 12h4m12 0h.01M5 8h2a1 1 0 001-1V5a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1zm12 0h2a1 1 0 001-1V5a1 1 0 00-1-1h-2a1 1 0 00-1 1v2a1 1 0 001 1zM5 20h2a1 1 0 001-1v-2a1 1 0 00-1-1H5a1 1 0 00-1 1v2a1 1 0 001 1z" /></svg>
+                                        <span>Download TTD QR</span>
+                                    </a>
                                 @elseif($past->status === 'rejected')
                                     <span class="px-2.5 py-1 rounded-full text-[11px] font-bold bg-rose-100 text-rose-800">
                                         &times; Ditolak

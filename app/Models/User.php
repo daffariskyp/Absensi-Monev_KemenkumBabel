@@ -50,7 +50,7 @@ class User extends Authenticatable
     }
     public function projects()
     {
-        return $this->belongsToMany(Project::class, 'project_employees', 'user_id', 'project_id')
+        return $this->belongsToMany('App\\Models\\Project', 'project_employees', 'user_id', 'project_id')
                     ->withPivot('role'); // Include any other pivot data you need
     }
     public function administrations()
@@ -61,5 +61,10 @@ class User extends Authenticatable
     public function attendances()
     {
         return $this->hasMany(Attendance::class);
+    }
+
+    public function monevActivities()
+    {
+        return $this->hasMany(MonevActivity::class);
     }
 }

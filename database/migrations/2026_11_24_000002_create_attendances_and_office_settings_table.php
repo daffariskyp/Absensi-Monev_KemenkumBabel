@@ -25,12 +25,12 @@ return new class extends Migration
                 $table->timestamps();
             });
 
-            // Insert default office settings
+            // Insert default office settings (Kanwil Kemenkumham Kepulauan Bangka Belitung)
             DB::table('office_settings')->insert([
-                'office_name' => 'Kantor Instansi Pegawai Non-ASN',
-                'latitude' => -6.1753924,
-                'longitude' => 106.8271528,
-                'radius_meters' => 250,
+                'office_name' => 'Kanwil Kemenkumham Kepulauan Bangka Belitung',
+                'latitude' => -2.1516954,
+                'longitude' => 106.1568149,
+                'radius_meters' => 350,
                 'check_in_start' => '06:00:00',
                 'check_in_end' => '08:30:00',
                 'check_out_start' => '16:00:00',

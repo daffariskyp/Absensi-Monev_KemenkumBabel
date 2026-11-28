@@ -3,216 +3,250 @@
         <!-- Header Banner -->
         <div class="bg-gradient-to-r from-slate-900 via-indigo-950 to-blue-900 text-white rounded-2xl p-6 shadow-xl mb-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
             <div>
-                <div class="inline-flex items-center gap-2 bg-blue-500/20 text-blue-200 text-xs px-3 py-1 rounded-full font-medium mb-2 backdrop-blur-sm border border-blue-400/30">
-                    <span class="size-2 rounded-full bg-emerald-400 animate-pulse"></span>
-                    Dashboard Monitoring Aktivitas Pegawai Non-ASN (Satpam, Driver, Kebersihan)
-                </div>
-                <h1 class="text-2xl font-bold">Aktivitas & Kehadiran Pegawai Hari Ini</h1>
-                <p class="text-blue-200 text-sm mt-1">
-                    Hari / Tanggal: <span class="font-semibold text-white">{{ $today }}</span> | Lokasi: {{ $office->office_name }}
+                <h1 class="text-2xl md:text-3xl font-extrabold tracking-tight">Aktivitas & Kehadiran Pegawai Hari Ini</h1>
+                <p class="text-blue-200 text-sm mt-1.5 flex items-center gap-2 flex-wrap">
+                    <span>Hari / Tanggal: <strong class="text-white">{{ $today }}</strong></span>
+                    <span>&bull;</span>
+                    <span>Lokasi Kantor: <strong class="text-yellow-300">{{ $office->office_name }}</strong></span>
                 </p>
             </div>
             <div class="flex items-center gap-3">
                 <a href="{{ route('dashboard.printToday') }}" target="_blank"
-                    class="px-5 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-bold shadow-lg flex items-center gap-2 transition hover:shadow-emerald-500/30">
+                    class="btn-colorful px-5 py-2.5 bg-gradient-to-r from-emerald-600 via-teal-600 to-emerald-700 hover:from-emerald-700 hover:to-teal-800 text-white rounded-xl text-sm font-bold shadow-lg flex items-center gap-2 transition transform active:scale-95 border-2 border-transparent">
                     <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
                     </svg>
-                    Download PDF / Cetak Rekap
+                    Cetak hari ini
                 </a>
             </div>
         </div>
 
-        <!-- Metric Stat Cards -->
-        <div class="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
-            <!-- Total Karyawan -->
-            <div class="bg-white border rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between text-gray-500 text-xs font-bold uppercase tracking-wider">
-                    <span>Total Pegawai Non-ASN</span>
-                    <span class="p-2 rounded-xl bg-gray-100 text-gray-700">
-                        <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" /></svg>
-                    </span>
-                </div>
-                <div class="text-3xl font-extrabold text-gray-900 mt-2">{{ $stats['total_karyawan'] }}</div>
-                <div class="text-xs text-gray-400 mt-1">Satpam, Driver, Kebersihan</div>
+        <form method="GET" action="{{ route('attendance.print') }}" target="_blank"
+            class="dashboard-print-form bg-white border border-blue-200 rounded-xl p-4 mb-6">
+            <h2 class="font-bold text-gray-900">Cetak rekap kehadiran &amp; Monev</h2>
+            <div>
+                <label for="dashboard-print-month">Periode</label>
+                <select id="dashboard-print-month" name="month">
+                    <option value="all">Setahun penuh</option>
+                    @foreach(range(1, 12) as $month)
+                        <option value="{{ $month }}" @selected($month === (int) substr($todayDate, 5, 2))>
+                            {{ \Carbon\Carbon::create(2000, $month, 1)->locale('id')->translatedFormat('F') }}
+                        </option>
+                    @endforeach
+                </select>
             </div>
+            <div>
+                <label for="dashboard-print-year">Tahun</label>
+                <input id="dashboard-print-year" type="number" name="year" min="1900" max="9998"
+                    value="{{ substr($todayDate, 0, 4) }}" required>
+            </div>
+            <button type="submit" class="app-action">Buka laporan cetak</button>
+        </form>
 
-            <!-- Masuk / Hadir -->
-            <div class="bg-white border border-emerald-200 rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between text-emerald-700 text-xs font-bold uppercase tracking-wider">
-                    <span>Masuk (Hadir)</span>
-                    <span class="p-2 rounded-xl bg-emerald-50 text-emerald-600">
-                        <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
-                    </span>
+        <figure class="attendance-chart" data-attendance-chart data-url="{{ route('dashboard') }}">
+            <figcaption class="attendance-chart-heading">
+                <div>
+                    <h2>Status kehadiran hari ini</h2>
+                    <p data-chart-status>Pembaruan otomatis setiap 30 detik</p>
                 </div>
-                <div class="text-3xl font-extrabold text-emerald-700 mt-2">{{ $stats['total_masuk'] }}</div>
-                <div class="text-xs text-emerald-600 mt-1">Sudah Absen Wajah Hari Ini</div>
-            </div>
+                <div class="attendance-chart-totals">
+                    <span><strong data-chart-value="total_karyawan">{{ $stats['total_karyawan'] }}</strong> pegawai</span>
+                    <span><strong data-chart-value="total_monev_kegiatan">{{ $stats['total_monev_kegiatan'] }}</strong> kegiatan Monev</span>
+                </div>
+            </figcaption>
+            @foreach([
+                'total_tepat_waktu' => 'Tepat waktu',
+                'total_telat' => 'Terlambat',
+                'total_sakit' => 'Sakit',
+                'total_izin' => 'Izin atau cuti',
+                'total_libur_terjadwal' => 'Libur Terjadwal',
+                'total_tanpa_keterangan' => 'Tanpa keterangan',
+            ] as $key => $label)
+                <div class="attendance-chart-row">
+                    <span id="chart-{{ $key }}">{{ $label }}</span>
+                    <meter aria-labelledby="chart-{{ $key }}" data-chart-meter="{{ $key }}"
+                        min="0" max="{{ max(1, $stats['total_karyawan']) }}" value="{{ $stats[$key] ?? 0 }}"></meter>
+                    <strong data-chart-value="{{ $key }}">{{ $stats[$key] ?? 0 }}</strong>
+                </div>
+            @endforeach
+        </figure>
 
-            <!-- Izin / Cuti / Sakit -->
-            <div class="bg-white border border-blue-200 rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between text-blue-700 text-xs font-bold uppercase tracking-wider">
-                    <span>Izin / Sakit / Cuti</span>
-                    <span class="p-2 rounded-xl bg-blue-50 text-blue-600">
-                        <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
-                    </span>
-                </div>
-                <div class="text-3xl font-extrabold text-blue-700 mt-2">{{ $stats['total_izin'] }}</div>
-                <div class="text-xs text-blue-600 mt-1">Izin Disetujui Atasan</div>
-            </div>
-
-            <!-- Tanpa Keterangan / Alpha -->
-            <div class="bg-white border border-rose-200 rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between text-rose-700 text-xs font-bold uppercase tracking-wider">
-                    <span>Tanpa Keterangan</span>
-                    <span class="p-2 rounded-xl bg-rose-50 text-rose-600">
-                        <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" /></svg>
-                    </span>
-                </div>
-                <div class="text-3xl font-extrabold text-rose-700 mt-2">{{ $stats['total_tanpa_keterangan'] }}</div>
-                <div class="text-xs text-rose-600 mt-1">Belum Hadir / Belum Ada Data</div>
-            </div>
-
-            <!-- Libur Terjadwal (Off Dinas) -->
-            <div class="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
-                <div class="flex items-center justify-between text-slate-700 text-xs font-bold uppercase tracking-wider">
-                    <span>Libur Terjadwal</span>
-                    <span class="p-2 rounded-xl bg-slate-100 text-slate-600">
-                        <svg class="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
-                    </span>
-                </div>
-                <div class="text-3xl font-extrabold text-slate-700 mt-2">{{ $stats['total_libur_terjadwal'] ?? 0 }}</div>
-                <div class="text-xs text-slate-500 mt-1">Off Dinas Sesuai Role</div>
-            </div>
+        <div class="dashboard-tabs" aria-label="Filter status pegawai" role="group">
+            @foreach([
+                'semua' => 'Semua pegawai',
+                'masuk' => 'Hadir',
+                'telat' => 'Terlambat',
+                'sakit' => 'Sakit',
+                'izin' => 'Izin / cuti',
+                'libur' => 'Libur Terjadwal',
+                'alpha' => 'Tanpa keterangan',
+                'monev' => 'Kegiatan Monev',
+            ] as $tab => $label)
+                <button type="button" onclick="switchTab('tab-{{ $tab }}')" data-dashboard-tab
+                    aria-controls="tab-{{ $tab }}" aria-pressed="{{ $tab === 'semua' ? 'true' : 'false' }}">
+                    {{ $label }}
+                </button>
+            @endforeach
         </div>
 
-        <!-- Filter Tab Buttons -->
-        <div class="bg-white border rounded-2xl p-2 shadow-sm mb-6 flex flex-wrap gap-2">
-            <button type="button" onclick="switchTab('tab-semua')" id="btn-tab-semua"
-                class="tab-btn px-5 py-2.5 rounded-xl font-bold text-xs bg-slate-900 text-white transition flex items-center gap-2">
-                <span>Semua Aktivitas</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-700">{{ $stats['total_karyawan'] }}</span>
-            </button>
-
-            <button type="button" onclick="switchTab('tab-masuk')" id="btn-tab-masuk"
-                class="tab-btn px-5 py-2.5 rounded-xl font-bold text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-emerald-500"></span>
-                <span>Masuk (Hadir)</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] bg-emerald-100 text-emerald-800">{{ $stats['total_masuk'] }}</span>
-            </button>
-
-            <button type="button" onclick="switchTab('tab-izin')" id="btn-tab-izin"
-                class="tab-btn px-5 py-2.5 rounded-xl font-bold text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-blue-500"></span>
-                <span>Izin & Sakit</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] bg-blue-100 text-blue-800">{{ $stats['total_izin'] }}</span>
-            </button>
-
-            <button type="button" onclick="switchTab('tab-alpha')" id="btn-tab-alpha"
-                class="tab-btn px-5 py-2.5 rounded-xl font-bold text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-rose-500"></span>
-                <span>Tanpa Keterangan (Alpha)</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] bg-rose-100 text-rose-800">{{ $stats['total_tanpa_keterangan'] }}</span>
-            </button>
-
-            <button type="button" onclick="switchTab('tab-libur')" id="btn-tab-libur"
-                class="tab-btn px-5 py-2.5 rounded-xl font-bold text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center gap-2">
-                <span class="size-2 rounded-full bg-slate-500"></span>
-                <span>Libur Terjadwal (Off Dinas)</span>
-                <span class="px-2 py-0.5 rounded-full text-[10px] bg-slate-200 text-slate-800">{{ $stats['total_libur_terjadwal'] ?? 0 }}</span>
-            </button>
-        </div>
-
-        <!-- Tab 1: Semua Pegawai -->
         <div id="tab-semua" class="tab-pane block">
-            <div class="bg-white border rounded-2xl shadow-sm overflow-hidden">
-                <div class="p-4 border-b bg-gray-50 flex justify-between items-center">
-                    <h3 class="font-bold text-gray-800 text-sm">Status Seluruh Pegawai Non-ASN Hari Ini</h3>
-                    <span class="text-xs text-gray-500">{{ $today }}</span>
+            <div class="bg-white border-2 border-gray-200 rounded-2xl shadow-sm overflow-hidden">
+                <div class="dashboard-table-heading">
+                    <h3 class="font-bold text-gray-900 text-sm">Daftar pegawai</h3>
+                    <input type="search" id="employeeSearchInput" oninput="filterPegawaiSearch()"
+                        aria-label="Cari nama atau divisi pegawai" placeholder="Cari nama atau divisi"
+                        class="table-filter px-3 py-1.5 text-sm">
                 </div>
+
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm">
-                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-bold">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm" id="tableSemuaPegawai">
+                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold tracking-wider">
                             <tr>
                                 <th class="py-3 px-4">Pegawai</th>
                                 <th class="py-3 px-4">Role / Jabatan</th>
                                 <th class="py-3 px-4 text-center">Status Hari Ini</th>
                                 <th class="py-3 px-4 text-center">Jam Masuk</th>
                                 <th class="py-3 px-4 text-center">Jam Pulang</th>
-                                <th class="py-3 px-4">Foto / Bukti</th>
+                                <th class="py-3 px-4 text-center">Foto / Bukti</th>
+                                <th class="py-3 px-4 text-center">Aktivitas Monev</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
-                            {{-- Masuk --}}
+                            {{-- Pegawai Masuk / Hadir --}}
                             @foreach($listMasuk as $item)
-                                <tr class="hover:bg-gray-50 transition">
-                                    <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
+                                @php
+                                    $isTelat = $item['is_late'] ?? ($item['attendance']->check_in_status === 'terlambat');
+                                @endphp
+                                <tr class="pegawai-row hover:bg-gray-50 transition {{ $isTelat ? 'bg-amber-50/30' : '' }}" data-name="{{ mb_strtolower($item['employee']->user?->name ?? '') }}" data-role="{{ mb_strtolower($item['employee']->role?->name ?? '') }}">
+                                    <td class="py-3.5 px-4 font-bold text-gray-900">
+                                        <div class="flex items-center gap-2">
+                                            <span>{{ $item['employee']->user->name }}</span>
+                                            @if($isTelat)
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-amber-100 text-amber-800 border border-amber-300">TELAT</span>
+                                            @else
+                                                <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-emerald-100 text-emerald-800 border border-emerald-300">TEPAT WAKTU</span>
+                                            @endif
+                                        </div>
+                                    </td>
                                     <td class="py-3.5 px-4">
                                         <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                                            {{ $item['employee']->role?->name }}
+                                            {{ $item['employee']->role?->name ?? 'Non-ASN' }}
                                         </span>
                                     </td>
                                     <td class="py-3.5 px-4 text-center">
-                                        <span class="px-3 py-1 rounded-full text-xs font-bold {{ $item['attendance']->check_in_status === 'tepat_waktu' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
-                                            Hadir ({{ $item['status_label'] }})
-                                        </span>
-                                    </td>
-                                    <td class="py-3.5 px-4 text-center font-semibold text-gray-800">
-                                        {{ substr($item['attendance']->check_in_time, 0, 5) }} WIB
-                                        @if($item['attendance']->shift)
-                                            <div class="text-[10px] font-bold mt-0.5 {{ $item['attendance']->shift === 'malam' ? 'text-indigo-600' : 'text-amber-600' }}">
-                                                {{ $item['attendance']->shift === 'malam' ? '🌙 Shift Malam' : '☀️ Shift Pagi' }}{{ !empty($item['is_overnight']) ? ' (lintas hari)' : '' }}
-                                            </div>
+                                        @if($isTelat)
+                                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300">
+                                                Terlambat
+                                            </span>
+                                        @else
+                                            <span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                                                Tepat Waktu
+                                            </span>
                                         @endif
                                     </td>
-                                    <td class="py-3.5 px-4 text-center text-gray-600">
+                                    <td class="py-3.5 px-4 text-center font-bold text-gray-800">
+                                        {{ substr($item['attendance']->check_in_time, 0, 5) }} WIB
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center text-gray-600 font-medium">
                                         {{ $item['attendance']->check_out_time ? substr($item['attendance']->check_out_time, 0, 5) . ' WIB' : 'Belum Pulang' }}
                                     </td>
-                                    <td class="py-3.5 px-4">
+                                    <td class="py-3.5 px-4 text-center">
                                         @if($item['attendance']->check_in_photo)
                                             <img src="{{ asset('storage/' . $item['attendance']->check_in_photo) }}"
-                                                class="size-10 rounded-full object-cover border-2 border-emerald-500 cursor-pointer shadow hover:scale-110 transition"
+                                                class="size-10 mx-auto rounded-full object-cover border-2 {{ $isTelat ? 'border-amber-500' : 'border-emerald-500' }} cursor-pointer shadow hover:scale-110 transition"
                                                 onclick="showDashboardPhoto('{{ asset('storage/' . $item['attendance']->check_in_photo) }}', 'Foto Masuk: {{ $item['employee']->user->name }}')">
                                         @else
                                             <span class="text-xs text-gray-400">-</span>
                                         @endif
                                     </td>
-                                </tr>
-                            @endforeach
-
-                            {{-- Izin --}}
-                            @foreach($listIzin as $item)
-                                <tr class="hover:bg-gray-50 transition bg-blue-50/30">
-                                    <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
-                                    <td class="py-3.5 px-4">
-                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
-                                            {{ $item['employee']->role?->name }}
-                                        </span>
-                                    </td>
                                     <td class="py-3.5 px-4 text-center">
-                                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-800">
-                                            Izin / Sakit
-                                        </span>
-                                    </td>
-                                    <td colspan="2" class="py-3.5 px-4 text-center text-xs text-blue-700 font-medium">
-                                        Alasan: {{ Str::limit($item['reason'], 50) }}
-                                    </td>
-                                    <td class="py-3.5 px-4">
-                                        @if($item['attachment'])
-                                            <button type="button" onclick="showDashboardPhoto('{{ asset('storage/' . $item['attachment']) }}', 'Surat Sakit: {{ $item['employee']->user->name }}')"
-                                                class="text-xs text-purple-700 underline font-semibold flex items-center gap-1">
-                                                Lihat Surat Sakit
-                                            </button>
+                                        @if(isset($item['monev_activities']) && $item['monev_activities']->isNotEmpty())
+                                            <div class="flex items-center justify-center gap-1.5">
+                                                <span class="px-2 py-0.5 rounded-full bg-indigo-100 text-indigo-800 font-bold text-[11px]">
+                                                    {{ $item['monev_activities']->count() }} Kegiatan
+                                                </span>
+                                                <button type="button" onclick='showEmployeeActivities(@json($item['employee']->user->name), @json($item['monev_activities']))'
+                                                    class="btn-colorful px-2.5 py-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded-lg text-[11px] font-bold transition shadow-sm border border-transparent">
+                                                    Lihat
+                                                </button>
+                                            </div>
                                         @else
-                                            <span class="text-xs text-gray-400">-</span>
+                                            <span class="text-gray-400 italic text-[11px]">Belum mengisi</span>
                                         @endif
                                     </td>
                                 </tr>
                             @endforeach
 
-                            {{-- Alpha --}}
+                            {{-- Pegawai Sakit (Surat Dokter) --}}
+                            @foreach($listSakit as $item)
+                                <tr class="pegawai-row hover:bg-gray-50 transition bg-pink-50/25" data-name="{{ mb_strtolower($item['employee']->user?->name ?? '') }}" data-role="{{ mb_strtolower($item['employee']->role?->name ?? '') }}">
+                                    <td class="py-3.5 px-4 font-bold text-gray-900">
+                                        <div class="flex items-center gap-2">
+                                            <span>{{ $item['employee']->user->name }}</span>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-black bg-pink-100 text-pink-800 border border-pink-300">SAKIT</span>
+                                        </div>
+                                    </td>
+                                    <td class="py-3.5 px-4">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                                            {{ $item['employee']->role?->name ?? 'Non-ASN' }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-800 border border-pink-300">
+                                            Sakit (Dokter)
+                                        </span>
+                                    </td>
+                                    <td colspan="2" class="py-3.5 px-4 text-center text-xs text-pink-700 font-medium">
+                                        Keterangan: {{ Str::limit($item['reason'], 45) }}
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        @if($item['attachment'])
+                                            <button type="button" onclick="showDashboardPhoto('{{ asset('storage/' . $item['attachment']) }}', 'Surat Sakit: {{ $item['employee']->user->name }}')"
+                                                class="btn-colorful px-2.5 py-1 bg-pink-600 hover:bg-pink-700 text-white text-[11px] font-bold rounded-lg shadow-sm transition">
+                                                Lihat Surat
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-gray-400">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center text-xs text-gray-400 italic">-</td>
+                                </tr>
+                            @endforeach
+
+                            {{-- Pegawai Izin & Cuti --}}
+                            @foreach($listIzin as $item)
+                                <tr class="pegawai-row hover:bg-gray-50 transition bg-purple-50/25" data-name="{{ mb_strtolower($item['employee']->user?->name ?? '') }}" data-role="{{ mb_strtolower($item['employee']->role?->name ?? '') }}">
+                                    <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
+                                    <td class="py-3.5 px-4">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800">
+                                            {{ $item['employee']->role?->name ?? 'Non-ASN' }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                                            Izin / Cuti
+                                        </span>
+                                    </td>
+                                    <td colspan="2" class="py-3.5 px-4 text-center text-xs text-purple-700 font-medium">
+                                        Keterangan: {{ Str::limit($item['reason'], 45) }}
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        @if($item['attachment'])
+                                            <button type="button" onclick="showDashboardPhoto('{{ asset('storage/' . $item['attachment']) }}', 'Lampiran Izin: {{ $item['employee']->user->name }}')"
+                                                class="btn-colorful px-2.5 py-1 bg-purple-600 hover:bg-purple-700 text-white text-[11px] font-bold rounded-lg shadow-sm transition">
+                                                Lihat Bukti
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-gray-400">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center text-xs text-gray-400 italic">-</td>
+                                </tr>
+                            @endforeach
+
+                            {{-- Pegawai Tanpa Keterangan (Alpha) --}}
                             @foreach($listTanpaKeterangan as $item)
-                                <tr class="hover:bg-gray-50 transition bg-rose-50/20">
+                                <tr class="pegawai-row hover:bg-gray-50 transition bg-rose-50/20" data-name="{{ mb_strtolower($item['employee']->user?->name ?? '') }}" data-role="{{ mb_strtolower($item['employee']->role?->name ?? '') }}">
                                     <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
                                     <td class="py-3.5 px-4">
                                         <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
@@ -220,55 +254,170 @@
                                         </span>
                                     </td>
                                     <td class="py-3.5 px-4 text-center">
-                                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
                                             Tanpa Keterangan
                                         </span>
                                     </td>
                                     <td colspan="2" class="py-3.5 px-4 text-center text-xs text-rose-600 italic">
                                         Belum melakukan presensi hari ini
                                     </td>
-                                    <td class="py-3.5 px-4 text-xs text-gray-500">
-                                        No. HP: {{ $item['employee']->phone_number ?? '-' }}
+                                    <td class="py-3.5 px-4 text-center">
+                                        @if($item['employee']->phone_number)
+                                            <a href="https://wa.me/{{ preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $item['employee']->phone_number)) }}" target="_blank"
+                                                class="btn-colorful inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-sm transition">
+                                                WhatsApp
+                                            </a>
+                                        @else
+                                            <span class="text-xs text-gray-400">-</span>
+                                        @endif
                                     </td>
+                                    <td class="py-3.5 px-4 text-center text-xs text-gray-400 italic">-</td>
                                 </tr>
                             @endforeach
-
-                            {{-- Libur Terjadwal (Off Dinas) --}}
                             @foreach($listLiburTerjadwal as $item)
-                                <tr class="bg-slate-50/60">
+                                <tr class="pegawai-row hover:bg-gray-50 transition bg-rose-50/20" data-name="{{ mb_strtolower($item['employee']->user?->name ?? '') }}" data-role="{{ mb_strtolower($item['employee']->role?->name ?? '') }}">
                                     <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
                                     <td class="py-3.5 px-4">
-                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-100 text-slate-700">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700">
                                             {{ $item['employee']->role?->name }}
                                         </span>
                                     </td>
                                     <td class="py-3.5 px-4 text-center">
-                                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">
+                                        <span class="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
                                             Libur Terjadwal
                                         </span>
                                     </td>
-                                    <td colspan="2" class="py-3.5 px-4 text-center text-xs text-slate-500 italic">
-                                        Off dinas (hari kerja: {{ $item['employee']->workDaysLabel() }})
+                                    <td colspan="2" class="py-3.5 px-4 text-center text-xs text-rose-600 italic">
+                                        Belum melakukan presensi hari ini
                                     </td>
-                                    <td class="py-3.5 px-4 text-xs text-gray-400">-</td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        @if($item['employee']->phone_number)
+                                            <a href="https://wa.me/{{ preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $item['employee']->phone_number)) }}" target="_blank"
+                                                class="btn-colorful inline-flex items-center gap-1 px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-[11px] font-bold shadow-sm transition">
+                                                WhatsApp
+                                            </a>
+                                        @else
+                                            <span class="text-xs text-gray-400">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center text-xs text-gray-400 italic">-</td>
                                 </tr>
                             @endforeach
+
+                            <tr id="noRowsFoundSemua" class="hidden">
+                                <td colspan="7" class="py-12 text-center">
+                                    <div class="max-w-md mx-auto bg-gray-50 border border-gray-200 rounded-2xl p-6 shadow-sm">
+                                        <svg class="size-10 mx-auto text-gray-400 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                                        <p id="noRowsText" class="text-xs font-bold text-gray-700">Tidak ada pegawai yang cocok dengan pencarian.</p>
+                                        <button type="button" onclick="resetPegawaiSearch()" class="mt-3 px-4 py-1.5 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white border-2 border-yellow-300 shadow transition inline-flex items-center gap-1.5 cursor-pointer">
+                                            Hapus pencarian
+                                        </button>
+                                    </div>
+                                </td>
+                            </tr>
                         </tbody>
                     </table>
                 </div>
             </div>
         </div>
 
-        <!-- Tab 2: Masuk / Hadir -->
-        <div id="tab-masuk" class="tab-pane hidden">
-            <div class="bg-white border rounded-2xl shadow-sm overflow-hidden">
-                <div class="p-4 border-b bg-emerald-50/50 flex justify-between items-center">
-                    <h3 class="font-bold text-emerald-900 text-sm">Daftar Pegawai yang Masuk / Hadir Hari Ini</h3>
-                    <span class="text-xs font-bold text-emerald-700 bg-emerald-100 px-3 py-1 rounded-full">{{ count($listMasuk) }} Pegawai</span>
+        <!-- ========================================================================= -->
+        <!-- Tab 2: Terlambat / Telat (Khusus Rekap Pegawai yang Datang Terlambat)     -->
+        <!-- ========================================================================= -->
+        <div id="tab-telat" class="tab-pane hidden">
+            <div class="bg-white border-2 border-amber-300 rounded-2xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-amber-50/70 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-extrabold text-amber-950 text-sm flex items-center gap-2">
+                            <span class="p-1 rounded bg-amber-500 text-white">
+                                <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                            </span>
+                            Daftar Pegawai yang Terlambat Hadir Hari Ini
+                        </h3>
+                        <p class="text-xs text-amber-800 mt-0.5">Pegawai yang melakukan absensi masuk setelah batas jam masuk yang ditentukan kantor.</p>
+                    </div>
+                    <span class="text-xs font-black text-amber-900 bg-amber-200 px-3 py-1 rounded-full border border-amber-300">
+                        {{ count($listTelat) }} Pegawai Terlambat
+                    </span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm">
-                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-bold">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
+                            <tr>
+                                <th class="py-3 px-4">Pegawai</th>
+                                <th class="py-3 px-4">Role / Jabatan</th>
+                                <th class="py-3 px-4 text-center">Waktu Masuk</th>
+                                <th class="py-3 px-4 text-center">Status</th>
+                                <th class="py-3 px-4 text-center">Foto Wajah</th>
+                                <th class="py-3 px-4 text-center">Aksi Cepat</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @forelse($listTelat as $item)
+                                <tr class="hover:bg-amber-50/30 transition">
+                                    <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
+                                    <td class="py-3.5 px-4 text-xs font-semibold text-gray-700">{{ $item['employee']->role?->name }}</td>
+                                    <td class="py-3.5 px-4 text-center font-black text-amber-800">
+                                        {{ substr($item['attendance']->check_in_time, 0, 5) }} WIB
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-extrabold bg-amber-100 text-amber-900 border border-amber-300">
+                                            Terlambat
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        @if($item['attendance']->check_in_photo)
+                                            <img src="{{ asset('storage/' . $item['attendance']->check_in_photo) }}"
+                                                class="size-11 mx-auto rounded-full object-cover border-2 border-amber-500 cursor-pointer shadow hover:scale-110 transition"
+                                                onclick="showDashboardPhoto('{{ asset('storage/' . $item['attendance']->check_in_photo) }}', 'Foto Wajah Terlambat: {{ $item['employee']->user->name }}')">
+                                        @else
+                                            <span class="text-xs text-gray-400">-</span>
+                                        @endif
+                                    </td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        @if($item['employee']->phone_number)
+                                            <a href="https://wa.me/{{ preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $item['employee']->phone_number)) }}" target="_blank"
+                                                class="btn-colorful inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+                                                Hubungi WhatsApp
+                                            </a>
+                                        @else
+                                            <span class="text-xs text-gray-400">-</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="6" class="py-10 text-center text-emerald-700 font-bold text-xs bg-emerald-50/20">
+                                        <div class="flex flex-col items-center justify-center">
+                                            <svg class="size-8 text-emerald-500 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                                            <span>Luar biasa! Tidak ada pegawai yang terlambat hadir hari ini.</span>
+                                        </div>
+                                    </td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- Tab 3: Masuk (Hadir)                                                      -->
+        <!-- ========================================================================= -->
+        <div id="tab-masuk" class="tab-pane hidden">
+            <div class="bg-white border-2 border-emerald-300 rounded-2xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-emerald-50/60 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-extrabold text-emerald-950 text-sm">Daftar Seluruh Pegawai yang Masuk / Hadir Hari Ini</h3>
+                        <p class="text-xs text-emerald-700">Termasuk pegawai tepat waktu dan yang terlambat.</p>
+                    </div>
+                    <span class="text-xs font-black text-emerald-800 bg-emerald-100 px-3 py-1 rounded-full border border-emerald-300">
+                        {{ count($listMasuk) }} Pegawai Hadir
+                    </span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
                             <tr>
                                 <th class="py-3 px-4">Pegawai</th>
                                 <th class="py-3 px-4">Role</th>
@@ -286,14 +435,9 @@
                                     <td class="py-3.5 px-4 text-xs font-semibold text-gray-600">{{ $item['employee']->role?->name }}</td>
                                     <td class="py-3.5 px-4 text-center font-bold text-gray-800">
                                         {{ substr($item['attendance']->check_in_time, 0, 5) }} WIB
-                                        @if($item['attendance']->shift)
-                                            <div class="text-[10px] font-bold mt-0.5 {{ $item['attendance']->shift === 'malam' ? 'text-indigo-600' : 'text-amber-600' }}">
-                                                {{ $item['attendance']->shift === 'malam' ? '🌙 Shift Malam' : '☀️ Shift Pagi' }}{{ !empty($item['is_overnight']) ? ' (lintas hari)' : '' }}
-                                            </div>
-                                        @endif
                                     </td>
                                     <td class="py-3.5 px-4 text-center">
-                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold {{ $item['attendance']->check_in_status === 'tepat_waktu' ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800' }}">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold {{ $item['attendance']->check_in_status === 'tepat_waktu' ? 'bg-emerald-100 text-emerald-800 border border-emerald-300' : 'bg-amber-100 text-amber-800 border border-amber-300' }}">
                                             {{ $item['status_label'] }}
                                         </span>
                                     </td>
@@ -309,8 +453,20 @@
                                             <span class="text-xs text-gray-400">-</span>
                                         @endif
                                     </td>
-                                    <td class="py-3.5 px-4 text-xs max-w-xs truncate text-gray-600">
-                                        {{ $item['attendance']->monev_activity ?? 'Belum mengisi monev pulang' }}
+                                    <td class="py-3.5 px-4 text-xs">
+                                        @if(isset($item['monev_activities']) && $item['monev_activities']->isNotEmpty())
+                                            <div class="flex items-center gap-2">
+                                                <span class="px-2 py-0.5 rounded bg-indigo-100 text-indigo-800 font-bold text-[11px]">
+                                                    {{ $item['monev_activities']->count() }} Kegiatan
+                                                </span>
+                                                <button type="button" onclick='showEmployeeActivities(@json($item['employee']->user->name), @json($item['monev_activities']))'
+                                                    class="btn-colorful px-2.5 py-1 bg-gradient-to-r from-indigo-600 to-blue-600 hover:from-indigo-700 hover:to-blue-700 text-white rounded text-[11px] font-bold transition shadow-sm border border-transparent">
+                                                    Lihat Kegiatan
+                                                </button>
+                                            </div>
+                                        @else
+                                            <span class="text-gray-400 italic text-[11px]">Belum mengisi kegiatan</span>
+                                        @endif
                                     </td>
                                 </tr>
                             @empty
@@ -324,70 +480,23 @@
             </div>
         </div>
 
-        <!-- Tab 3: Izin & Sakit -->
-        <div id="tab-izin" class="tab-pane hidden">
-            <div class="bg-white border rounded-2xl shadow-sm overflow-hidden">
-                <div class="p-4 border-b bg-blue-50/50 flex justify-between items-center">
-                    <h3 class="font-bold text-blue-900 text-sm">Daftar Pegawai yang Sedang Izin / Sakit Hari Ini</h3>
-                    <span class="text-xs font-bold text-blue-700 bg-blue-100 px-3 py-1 rounded-full">{{ count($listIzin) }} Pegawai</span>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm">
-                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-bold">
-                            <tr>
-                                <th class="py-3 px-4">Pegawai</th>
-                                <th class="py-3 px-4">Role</th>
-                                <th class="py-3 px-4">Kategori Izin</th>
-                                <th class="py-3 px-4">Alasan Izin</th>
-                                <th class="py-3 px-4 text-center">Bukti Surat Sakit / Lampiran</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200">
-                            @forelse($listIzin as $item)
-                                <tr class="hover:bg-gray-50 transition">
-                                    <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
-                                    <td class="py-3.5 px-4 text-xs font-semibold text-gray-600">{{ $item['employee']->role?->name }}</td>
-                                    <td class="py-3.5 px-4">
-                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800">
-                                            {{ ucfirst(str_replace('_', ' ', $item['category'])) }}
-                                        </span>
-                                    </td>
-                                    <td class="py-3.5 px-4 text-xs text-gray-700 max-w-sm">{{ $item['reason'] }}</td>
-                                    <td class="py-3.5 px-4 text-center">
-                                        @if($item['attachment'])
-                                            <button type="button" onclick="showDashboardPhoto('{{ asset('storage/' . $item['attachment']) }}', 'Surat Sakit: {{ $item['employee']->user->name }}')"
-                                                class="px-3 py-1 bg-purple-100 hover:bg-purple-200 text-purple-800 rounded-lg text-xs font-bold transition">
-                                                Buka Surat Sakit
-                                            </button>
-                                        @else
-                                            <span class="text-xs text-gray-400 italic">Tidak ada lampiran</span>
-                                        @endif
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr>
-                                    <td colspan="5" class="py-8 text-center text-gray-400 text-xs">Tidak ada pegawai yang izin atau sakit hari ini.</td>
-                                </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-
-        <!-- Tab 4: Tanpa Keterangan (Alpha) -->
+        <!-- ========================================================================= -->
+        <!-- Tab 4: Tanpa Keterangan (Alpha)                                           -->
+        <!-- ========================================================================= -->
         <div id="tab-alpha" class="tab-pane hidden">
-            <div class="bg-white border rounded-2xl shadow-sm overflow-hidden">
-                <div class="p-4 border-b bg-rose-50/50 flex justify-between items-center">
+            <div class="bg-white border-2 border-rose-300 rounded-2xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-rose-50/70 flex justify-between items-center">
                     <div>
-                        <h3 class="font-bold text-rose-900 text-sm">Daftar Pegawai yang Belum Hadir / Tanpa Keterangan Hari Ini</h3>
-                        <p class="text-xs text-rose-600">Dapat segera dihubungi untuk konfirmasi kehadiran atau penugasan lapangan.</p>
+                        <h3 class="font-extrabold text-rose-950 text-sm">Daftar Pegawai yang Belum Hadir / Tanpa Keterangan Hari Ini</h3>
+                        <p class="text-xs text-rose-700">Dapat segera dihubungi untuk konfirmasi kehadiran atau penugasan lapangan.</p>
                     </div>
-                    <span class="text-xs font-bold text-rose-700 bg-rose-100 px-3 py-1 rounded-full">{{ count($listTanpaKeterangan) }} Pegawai</span>
+                    <span class="text-xs font-black text-rose-800 bg-rose-100 px-3 py-1 rounded-full border border-rose-300">
+                        {{ count($listTanpaKeterangan) }} Pegawai
+                    </span>
                 </div>
                 <div class="overflow-x-auto">
-                    <table class="w-full border-collapse text-left text-sm">
-                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-bold">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
                             <tr>
                                 <th class="py-3 px-4">Pegawai</th>
                                 <th class="py-3 px-4">Role / Jabatan</th>
@@ -405,15 +514,15 @@
                                     <td class="py-3.5 px-4 text-xs text-gray-500">{{ $item['employee']->nik ?? '-' }}</td>
                                     <td class="py-3.5 px-4 text-xs font-medium text-gray-800">{{ $item['employee']->phone_number ?? '-' }}</td>
                                     <td class="py-3.5 px-4 text-center">
-                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-800 border border-rose-300">
                                             Belum Hadir
                                         </span>
                                     </td>
                                     <td class="py-3.5 px-4 text-center">
                                         @if($item['employee']->phone_number)
                                             <a href="https://wa.me/{{ preg_replace('/^0/', '62', preg_replace('/[^0-9]/', '', $item['employee']->phone_number)) }}" target="_blank"
-                                                class="inline-flex items-center gap-1 px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white rounded text-xs font-semibold shadow-sm transition">
-                                                Hubungi WA
+                                                class="btn-colorful inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 text-white rounded-xl text-xs font-bold shadow-sm transition">
+                                                Hubungi WhatsApp
                                             </a>
                                         @else
                                             <span class="text-xs text-gray-400">-</span>
@@ -431,7 +540,130 @@
             </div>
         </div>
 
-        <!-- Tab 5: Libur Terjadwal (Off Dinas) -->
+        <!-- ========================================================================= -->
+        <!-- Tab 5: Sakit (Surat Dokter)                                               -->
+        <!-- ========================================================================= -->
+        <div id="tab-sakit" class="tab-pane hidden">
+            <div class="bg-white border-2 border-pink-300 rounded-2xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-pink-50/70 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-extrabold text-pink-950 text-sm flex items-center gap-2">
+                            <span class="p-1 rounded bg-pink-500 text-white">
+                                <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" /></svg>
+                            </span>
+                            Daftar Pegawai yang Sakit Hari Ini (Surat Keterangan Dokter)
+                        </h3>
+                        <p class="text-xs text-pink-700 mt-0.5">Pegawai yang mengajukan izin sakit disertai lampiran surat dokter yang telah diverifikasi.</p>
+                    </div>
+                    <span class="text-xs font-black text-pink-800 bg-pink-100 px-3 py-1 rounded-full border border-pink-300">
+                        {{ count($listSakit) }} Pegawai Sakit
+                    </span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
+                            <tr>
+                                <th class="py-3 px-4">Pegawai</th>
+                                <th class="py-3 px-4">Role / Jabatan</th>
+                                <th class="py-3 px-4 text-center">Status</th>
+                                <th class="py-3 px-4">Diagnosa / Alasan Sakit</th>
+                                <th class="py-3 px-4 text-center">Bukti Surat Dokter</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @forelse($listSakit as $item)
+                                <tr class="hover:bg-pink-50/30 transition">
+                                    <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
+                                    <td class="py-3.5 px-4 text-xs font-semibold text-gray-600">{{ $item['employee']->role?->name }}</td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-pink-100 text-pink-800 border border-pink-300">
+                                            Sakit (Surat Dokter)
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-xs text-gray-700 max-w-sm">{{ $item['reason'] }}</td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        @if($item['attachment'])
+                                            <button type="button" onclick="showDashboardPhoto('{{ asset('storage/' . $item['attachment']) }}', 'Surat Sakit Dokter: {{ $item['employee']->user->name }}')"
+                                                class="btn-colorful px-3 py-1.5 bg-gradient-to-r from-pink-600 to-rose-600 hover:from-pink-700 hover:to-rose-700 text-white rounded-xl text-xs font-bold transition shadow-sm border border-transparent">
+                                                Lihat Surat Dokter
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-gray-400 italic">Tidak ada lampiran</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-gray-400 text-xs">Alhamdulillah, tidak ada pegawai yang sedang sakit hari ini.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- Tab 6: Izin & Cuti Resmi                                                  -->
+        <!-- ========================================================================= -->
+        <div id="tab-izin" class="tab-pane hidden">
+            <div class="bg-white border-2 border-purple-300 rounded-2xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-purple-50/60 flex justify-between items-center">
+                    <div>
+                        <h3 class="font-extrabold text-purple-950 text-sm">Daftar Pegawai yang Sedang Izin / Cuti Hari Ini</h3>
+                        <p class="text-xs text-purple-700">Permohonan izin atau cuti resmi yang telah disetujui atasan.</p>
+                    </div>
+                    <span class="text-xs font-black text-purple-800 bg-purple-100 px-3 py-1 rounded-full border border-purple-300">
+                        {{ count($listIzin) }} Pegawai Izin/Cuti
+                    </span>
+                </div>
+                <div class="overflow-x-auto">
+                    <table data-mobile-pages class="w-full border-collapse text-left text-sm">
+                        <thead class="bg-gray-100 text-gray-700 text-xs uppercase font-extrabold">
+                            <tr>
+                                <th class="py-3 px-4">Pegawai</th>
+                                <th class="py-3 px-4">Role</th>
+                                <th class="py-3 px-4">Kategori Izin</th>
+                                <th class="py-3 px-4">Alasan Izin</th>
+                                <th class="py-3 px-4 text-center">Bukti / Lampiran</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-gray-200">
+                            @forelse($listIzin as $item)
+                                <tr class="hover:bg-gray-50 transition">
+                                    <td class="py-3.5 px-4 font-bold text-gray-900">{{ $item['employee']->user->name }}</td>
+                                    <td class="py-3.5 px-4 text-xs font-semibold text-gray-600">{{ $item['employee']->role?->name }}</td>
+                                    <td class="py-3.5 px-4">
+                                        <span class="px-2.5 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-800 border border-purple-300">
+                                            {{ ucfirst(str_replace('_', ' ', $item['category'])) }}
+                                        </span>
+                                    </td>
+                                    <td class="py-3.5 px-4 text-xs text-gray-700 max-w-sm">{{ $item['reason'] }}</td>
+                                    <td class="py-3.5 px-4 text-center">
+                                        @if($item['attachment'])
+                                            <button type="button" onclick="showDashboardPhoto('{{ asset('storage/' . $item['attachment']) }}', 'Lampiran Izin: {{ $item['employee']->user->name }}')"
+                                                class="btn-colorful px-3 py-1.5 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white rounded-xl text-xs font-bold transition shadow-sm border border-transparent">
+                                                Buka Bukti Izin
+                                            </button>
+                                        @else
+                                            <span class="text-xs text-gray-400 italic">Tidak ada lampiran</span>
+                                        @endif
+                                    </td>
+                                </tr>
+                            @empty
+                                <tr>
+                                    <td colspan="5" class="py-8 text-center text-gray-400 text-xs">Tidak ada pegawai yang sedang izin atau cuti hari ini.</td>
+                                </tr>
+                            @endforelse
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- ========================================================================= -->
+        <!-- Tab 6: Laporan Monev Hari Ini                                             -->
+        <!-- ========================================================================= -->
         <div id="tab-libur" class="tab-pane hidden">
             <div class="bg-white border rounded-2xl shadow-sm overflow-hidden">
                 <div class="p-4 border-b bg-slate-50 flex justify-between items-center">
@@ -473,10 +705,112 @@
                 </div>
             </div>
         </div>
+
+        <div id="tab-monev" class="tab-pane hidden">
+            <div class="bg-white border-2 border-indigo-300 rounded-2xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-indigo-50/60 flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div>
+                        <h3 class="font-extrabold text-indigo-950 text-base flex items-center gap-2">
+                            <span class="p-1.5 rounded-lg bg-indigo-600 text-white">
+                                <svg class="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01" /></svg>
+                            </span>
+                            Monitoring Laporan Monev & Aktivitas Pegawai Non-ASN Hari Ini
+                        </h3>
+                        <p class="text-xs text-indigo-700 mt-0.5">Seluruh rincian tugas dan kendala lapangan yang dilaporkan oleh Satpam, Driver, dan Petugas Kebersihan.</p>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="px-3.5 py-1 rounded-full text-xs font-black bg-indigo-100 text-indigo-900 border border-indigo-300">
+                            Total: {{ $allMonevActivitiesToday->count() }} Kegiatan Tercatat
+                        </span>
+                    </div>
+                </div>
+
+                @if($allMonevActivitiesToday->isEmpty())
+                    <div class="text-center py-12 text-gray-400 text-xs">
+                        <svg class="size-12 mx-auto text-gray-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                        </svg>
+                        <p class="font-semibold text-gray-600 text-sm">Belum ada pegawai yang mengirimkan aktivitas kegiatan monev hari ini.</p>
+                        <p class="text-gray-400 mt-1">Kegiatan yang dicatat oleh Satpam, Driver, atau Petugas Kebersihan akan langsung muncul di sini secara real-time.</p>
+                    </div>
+                @else
+                    <div class="p-5 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        @foreach($allMonevActivitiesToday as $idx => $act)
+                            <div class="bg-gray-50 hover:bg-white transition border-2 border-indigo-100 rounded-2xl p-4 shadow-sm hover:shadow-md">
+                                <div class="flex items-start justify-between gap-3 pb-3 border-b border-gray-200 mb-3">
+                                    <div>
+                                        <div class="flex items-center gap-2">
+                                            <h4 class="font-bold text-gray-900 text-sm">{{ $act->user->name }}</h4>
+                                            <span class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-100 text-blue-800">
+                                                {{ $act->user->employee?->role?->name ?? 'Pegawai Non-ASN' }}
+                                            </span>
+                                        </div>
+                                        <span class="text-[11px] text-gray-500 mt-0.5 block">
+                                            Jam Pengisian: <strong class="text-indigo-700">{{ Carbon\Carbon::parse($act->time)->format('H:i') }} WIB</strong>
+                                        </span>
+                                    </div>
+                                    <span class="px-2.5 py-1 rounded-xl text-xs font-black bg-indigo-600 text-white shadow-sm">
+                                        #{{ $idx + 1 }}
+                                    </span>
+                                </div>
+
+                                <div class="space-y-2 text-xs">
+                                    <div>
+                                        <span class="font-bold text-gray-700 block mb-0.5">Uraian Aktivitas:</span>
+                                        <p class="text-gray-800 leading-relaxed bg-white p-2.5 rounded-xl border border-gray-200">{{ $act->activity_description }}</p>
+                                    </div>
+
+                                    @if($act->obstacle && $act->obstacle !== 'Tidak ada kendala')
+                                        <div>
+                                            <span class="font-bold text-amber-800 block mb-0.5">Kendala / Hambatan:</span>
+                                            <p class="text-amber-900 bg-amber-50 p-2.5 rounded-xl border border-amber-200 italic">{{ $act->obstacle }}</p>
+                                        </div>
+                                    @endif
+
+                                    @if(!empty($act->photos))
+                                        <div class="pt-1">
+                                            <span class="font-bold text-gray-700 block mb-1">Bukti Foto Dokumentasi ({{ count($act->photos) }} Foto):</span>
+                                            <div class="flex flex-wrap gap-2">
+                                                @foreach($act->photos as $p)
+                                                    <img src="{{ asset('storage/' . $p) }}" alt="Foto Monev"
+                                                        class="size-16 rounded-xl object-cover border-2 border-indigo-200 cursor-pointer hover:scale-105 shadow transition"
+                                                        onclick="showDashboardPhoto('{{ asset('storage/' . $p) }}', 'Bukti Kegiatan: {{ $act->user->name }}')">
+                                                @endforeach
+                                            </div>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 
-    <!-- Modal Pratinjau Foto (Fixed Closing) -->
-    <div id="dashPhotoModal" style="display: none;" class="fixed inset-0 bg-black/80 z-[100] items-center justify-center p-4">
+    <!-- Modal Daftar Kegiatan Monev Pegawai (Admin View) -->
+    <div id="employeeActivitiesModal" style="display: none;" class="fixed inset-0 bg-black/60 z-[100] items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl overflow-y-auto max-h-[85vh] relative" onclick="event.stopPropagation()">
+            <div class="flex items-center justify-between pb-3 border-b mb-4">
+                <div>
+                    <h3 id="actModalEmployeeName" class="text-base font-bold text-gray-800">Daftar Kegiatan Monev Pegawai</h3>
+                    <p id="actModalCount" class="text-xs text-indigo-600 font-semibold mt-0.5"></p>
+                </div>
+                <button type="button" onclick="closeEmployeeActivities()" class="text-gray-400 hover:text-gray-700 text-2xl font-bold w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 transition">&times;</button>
+            </div>
+
+            <div id="actModalContent" class="space-y-3"></div>
+
+            <div class="mt-6 pt-3 border-t flex justify-end">
+                <button type="button" onclick="closeEmployeeActivities()" class="btn-colorful px-5 py-2 bg-gradient-to-r from-gray-700 to-gray-800 hover:from-gray-800 hover:to-gray-900 rounded-xl text-xs font-bold text-white transition shadow">
+                    Tutup
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Pratinjau Foto -->
+    <div id="dashPhotoModal" style="display: none;" class="fixed inset-0 bg-black/80 z-[110] items-center justify-center p-4">
         <div class="bg-white rounded-2xl overflow-hidden max-w-xl w-full shadow-2xl relative">
             <div class="p-4 border-b flex justify-between items-center bg-gray-50">
                 <h4 id="dashPhotoTitle" class="text-sm font-bold text-gray-800">Pratinjau Foto</h4>
@@ -486,7 +820,7 @@
                 <img id="dashPhotoImg" src="" class="max-h-[70vh] object-contain rounded">
             </div>
             <div class="p-3 bg-gray-50 border-t flex justify-end">
-                <button type="button" onclick="closeDashboardPhoto()" class="px-4 py-1.5 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-bold rounded-lg transition">
+                <button type="button" onclick="closeDashboardPhoto()" class="btn-colorful px-4 py-2 bg-gradient-to-r from-gray-700 to-gray-800 text-white text-xs font-bold rounded-xl transition shadow">
                     Tutup
                 </button>
             </div>
@@ -495,17 +829,32 @@
 
     <script>
         function switchTab(tabId) {
-            document.querySelectorAll('.tab-pane').forEach(el => el.classList.add('hidden'));
-            document.getElementById(tabId).classList.remove('hidden');
-
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.className = "tab-btn px-5 py-2.5 rounded-xl font-bold text-xs bg-gray-100 text-gray-700 hover:bg-gray-200 transition flex items-center gap-2";
+            document.querySelectorAll('.tab-pane').forEach(pane => {
+                pane.classList.toggle('hidden', pane.id !== tabId);
             });
+            document.querySelectorAll('[data-dashboard-tab]').forEach(button => {
+                button.setAttribute('aria-pressed', String(button.getAttribute('aria-controls') === tabId));
+            });
+        }
 
-            const activeBtn = document.getElementById('btn-' + tabId);
-            if (activeBtn) {
-                activeBtn.className = "tab-btn px-5 py-2.5 rounded-xl font-bold text-xs bg-slate-900 text-white transition flex items-center gap-2";
-            }
+        function filterPegawaiSearch() {
+            const table = document.getElementById('tableSemuaPegawai');
+            const search = document.getElementById('employeeSearchInput').value.toLowerCase().trim();
+            let matches = 0;
+            table.querySelectorAll('.pegawai-row').forEach(row => {
+                const found = row.dataset.name.includes(search) || row.dataset.role.includes(search);
+                row.style.display = found ? '' : 'none';
+                if (found) matches++;
+            });
+            document.getElementById('noRowsFoundSemua')?.classList.toggle('hidden', matches > 0);
+            table.dispatchEvent(new Event('table-filtered'));
+        }
+
+        function resetPegawaiSearch() {
+            const search = document.getElementById('employeeSearchInput');
+            search.value = '';
+            filterPegawaiSearch();
+            search.focus();
         }
 
         function showDashboardPhoto(src, title) {
@@ -520,10 +869,67 @@
             modal.style.display = 'none';
         }
 
+        function showEmployeeActivities(name, activities) {
+            document.getElementById('actModalEmployeeName').innerText = "Kegiatan Monev: " + name;
+            document.getElementById('actModalCount').innerText = "Total: " + activities.length + " dari maksimal 10 kegiatan tercatat hari ini";
+
+            const container = document.getElementById('actModalContent');
+            container.innerHTML = '';
+
+            if (!activities || activities.length === 0) {
+                container.innerHTML = '<div class="text-center py-8 text-gray-400 text-xs">Pegawai belum mencatat kegiatan pekerjaan hari ini.</div>';
+            } else {
+                activities.forEach((act, idx) => {
+                    let photosHtml = '';
+                    if (act.photos && act.photos.length > 0) {
+                        photosHtml = `
+                            <div class="pt-2">
+                                <span class="font-semibold text-gray-600 text-xs block mb-1">Bukti Foto (${act.photos.length} Foto):</span>
+                                <div class="flex flex-wrap gap-2">
+                                    ${act.photos.map(p => `
+                                        <img src="/storage/${p}" class="size-16 rounded-lg object-cover border-2 border-indigo-200 cursor-pointer hover:opacity-90 shadow-sm"
+                                             onclick="showDashboardPhoto('/storage/${p}', 'Bukti Foto Kegiatan #${idx + 1}')">
+                                    `).join('')}
+                                </div>
+                            </div>
+                        `;
+                    }
+
+                    const card = document.createElement('div');
+                    card.className = "bg-gray-50 rounded-xl p-3.5 border border-gray-200 text-xs space-y-1.5";
+                    card.innerHTML = `
+                        <div class="flex items-center justify-between pb-1 border-b border-gray-200">
+                            <span class="font-bold px-2.5 py-0.5 rounded-lg bg-indigo-600 text-white">Kegiatan #${idx + 1}</span>
+                            <span class="text-indigo-900 font-bold">Jam ${act.time ? act.time.substring(0, 5) : '-'} WIB</span>
+                        </div>
+                        <div class="text-gray-800">
+                            <span class="font-bold text-gray-700">Uraian Tugas:</span>
+                            <p class="mt-0.5 leading-relaxed bg-white p-2 rounded-lg border border-gray-200">${act.activity_description}</p>
+                        </div>
+                        ${act.obstacle && act.obstacle !== 'Tidak ada kendala' ? `
+                            <div class="text-amber-900 bg-amber-50/70 p-2 rounded-lg border border-amber-200">
+                                <span class="font-bold">Kendala:</span> ${act.obstacle}
+                            </div>
+                        ` : ''}
+                        ${photosHtml}
+                    `;
+                    container.appendChild(card);
+                });
+            }
+
+            document.getElementById('employeeActivitiesModal').style.display = 'flex';
+        }
+
+        function closeEmployeeActivities() {
+            const modal = document.getElementById('employeeActivitiesModal');
+            if (modal) modal.style.display = 'none';
+        }
+
         // Close on escape key
         document.addEventListener('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeDashboardPhoto();
+                closeEmployeeActivities();
             }
         });
 
@@ -531,6 +937,12 @@
         document.getElementById('dashPhotoModal').addEventListener('click', function(e) {
             if (e.target === this) {
                 closeDashboardPhoto();
+            }
+        });
+
+        document.getElementById('employeeActivitiesModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                closeEmployeeActivities();
             }
         });
     </script>

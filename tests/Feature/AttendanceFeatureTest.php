@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Models\Attendance;
 use App\Models\Employee;
+use App\Models\MonevActivity;
 use App\Models\OfficeSetting;
 use App\Models\Role;
 use App\Models\User;
@@ -157,6 +158,8 @@ class AttendanceFeatureTest extends TestCase
             ->assertSee('Melanjutkan Absen Pulang Shift Malam Kemarin')
             ->assertSee('id="formCheckOut"', false)
             ->assertDontSee('id="formCheckIn"', false);
+        $this->postJson('/attendance/checkout', $photoPayload)
+            ->assertUnprocessable()->assertJsonValidationErrors(['monev_activity', 'monev_obstacle']);
         $this->postJson('/attendance/checkout', $photoPayload + [
             'monev_activity' => 'Patroli area kantor dan pemeriksaan pintu.',
             'monev_obstacle' => str_repeat('Tidak ada kendala selama patroli. ', 4),
@@ -164,6 +167,8 @@ class AttendanceFeatureTest extends TestCase
 
         $attendance = Attendance::where('user_id', $user->id)->sole();
         $this->assertSame('2026-11-27', $attendance->date->toDateString());
+        $activity = MonevActivity::where('user_id', $user->id)->sole();
+        $this->assertSame('2026-11-27', $activity->date->toDateString());
         $this->assertDatabaseHas('attendances', [
             'id' => $attendance->id,
             'shift' => 'malam',
@@ -172,4 +177,41 @@ class AttendanceFeatureTest extends TestCase
             'check_out_time' => '07:00:00',
         ]);
     }
+
+    public function test_saved_monev_satisfies_checkout_and_appears_in_supervisor_reports(): void
+    {
+        Storage::fake('public');
+        $driver = User::factory()->create(['role' => 'user']);
+        $supervisor = User::factory()->create(['role' => 'supervisor']);
+        Employee::create([
+            'user_id' => $driver->id,
+            'role_id' => Role::firstOrCreate(['name' => 'Driver'])->id,
+            'status' => 'aktif',
+        ]);
+        OfficeSetting::getActive()->update(['radius_meters' => 0]);
+        $photoPayload = [
+            'latitude' => -2.1234,
+            'longitude' => 106.1234,
+            'photo' => 'data:image/jpeg;base64,c2FtcGxl',
+        ];
+        $this->actingAs($driver)->postJson('/attendance/checkin', $photoPayload)->assertOk();
+        $activity = 'Memeriksa kendaraan untuk tugas kantor.';
+        $this->postJson('/attendance/monev', ['activity_description' => $activity])->assertOk();
+        $this->get('/attendance')->assertOk()->assertSee('Monev untuk shift ini sudah tercatat.');
+        $this->postJson('/attendance/checkout', $photoPayload)->assertOk();
+        $this->assertSame(1, MonevActivity::where('user_id', $driver->id)->count());
+        $this->postJson('/attendance/calibrate-office', ['latitude' => -2.12, 'longitude' => 106.12])->assertForbidden();
+        $this->get('/dashboard/print-today')->assertForbidden();
+
+        $this->actingAs($supervisor)->get('/dashboard')->assertOk();
+        $this->getJson('/dashboard')->assertOk()->assertJsonStructure(['total_libur_terjadwal']);
+        $this->get('/attendance/recap?month=11&year=2026&user_id='.$driver->id)
+            ->assertOk()->assertSee($activity);
+        $this->get('/attendance/print?month=11&year=2026&user_id='.$driver->id)
+            ->assertOk()->assertSee($activity)->assertSee('<svg', false);
+        $attendance = Attendance::where('user_id', $driver->id)->sole();
+        $this->getJson('/attendance/'.$attendance->id.'/monev')->assertOk();
+        $this->get('/attendance/settings')->assertForbidden();
+    }
+
 }

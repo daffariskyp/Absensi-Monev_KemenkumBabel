@@ -1,39 +1,28 @@
 import Swal from 'sweetalert2';
-window.Swal = Swal;
 import './bootstrap';
 import '../css/app.css';
 
-// Modal Logout start
-document.addEventListener('DOMContentLoaded', function() {
-    const logoutBtn = document.getElementById('logout-btn');
+// Jadikan Swal global agar dapat diakses dari view Blade manapun
+window.Swal = Swal;
 
-    logoutBtn.addEventListener('click', function(e) {
-        e.preventDefault(); // Mencegah aksi default tombol
-
-        // Menampilkan SweetAlert2 untuk konfirmasi logout
-        Swal.fire({
-            title: 'Are you sure?',
-            text: "You will be logged out.",
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonColor: '#3085d6',
-            cancelButtonColor: '#d33',
-            confirmButtonText: 'Confirm Logout'
-        }).then((result) => {
-            if (result.isConfirmed) {
-                // Submit form logout jika dikonfirmasi
-                document.getElementById('logout-form').submit();
-            }
-        });
-    });
+// Visual feedback saat tombol diklik: efek shadow tactile (warna asli tombol tetap dipertahankan)
+document.addEventListener('click', function(e) {
+    const btn = e.target.closest('button, a.btn, [role="button"], .tab-btn');
+    if (btn && !btn.hasAttribute('disabled')) {
+        btn.classList.add('btn-clicked');
+        setTimeout(() => {
+            btn.classList.remove('btn-clicked');
+        }, 200);
+    }
 });
-// Modal Logout end
 
 // Modal delete user start
 document.addEventListener('DOMContentLoaded', function() {
     // Handle delete button click
     document.querySelectorAll('.delete-btn-user').forEach(button => {
         button.addEventListener('click', function(e) {
+            e.stopPropagation();
+            e.preventDefault();
             const employeeId = this.getAttribute('data-id');
 
             Swal.fire({

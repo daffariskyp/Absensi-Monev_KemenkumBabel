@@ -1,11 +1,11 @@
 <x-layouts.layout :title="$title" :active="$active">
     <main class="max-w-screen w-full mx-auto rounded-xl bg-white border">
         <!-- Search and Add Button -->
-        <div class="flex items-center justify-between mb-2 pt-3 px-6">
-            <form action="{{ route('admin.index') }}" method="GET" class="w-1/2 flex" id="filterForm">
-                <div class="flex items-center w-[60%]">
-                    <input type="text" placeholder="Search SDM"
-                        class="border rounded-lg w-full pl-9 pr-4 py-1 focus:outline-none text-sm"
+        <div class="admin-toolbar flex items-center justify-between mb-2 pt-3 px-6">
+            <form action="{{ route('admin.index') }}" method="GET" class="flex flex-wrap items-center gap-2">
+                <div class="relative flex items-center">
+                    <input type="search" placeholder="Cari nama atau email" aria-label="Cari nama atau email"
+                        class="table-filter pl-9 pr-4 py-1 text-sm"
                         value="{{ request('search') }}" name="search" />
                     <svg class="size-5 ml-3 z-0 absolute" viewBox="0 0 41 41" fill="none"
                         xmlns="http://www.w3.org/2000/svg">
@@ -14,11 +14,11 @@
                             fill="#616161" fill-opacity="0.6" />
                     </svg>
                 </div>
-                <div class="ml-5 w-[40%]">
+                <div>
                     <select name="role"
-                        class="w-[94%] primary-gray font-medium rounded-lg py-1 px-2 text-sm border outline-none"
-                        id="roleFilter">
-                        <option value="">Filter by division</option>
+                        class="primary-gray font-medium rounded-lg py-1 px-2 text-sm border outline-none"
+                        aria-label="Divisi">
+                        <option value="">Semua divisi</option>
                         @foreach ($roles as $role)
                             <option value="{{ $role->id }}" {{ request('role') == $role->id ? 'selected' : '' }}>
                                 {{ $role->name }}
@@ -26,15 +26,16 @@
                         @endforeach
                     </select>
                 </div>
+                <button type="submit" class="app-action">Cari</button>
             </form>
             <a href="{{ route('admin.create') }}"
-                class="bg-primary-black flex justify-center items-center hover:bg-zinc-500 cursor-pointer text-white text-xs px-4 py-1 rounded-lg hover:bg-gray-800">
+                class="btn-colorful bg-gradient-to-r from-blue-600 via-indigo-600 to-blue-700 hover:from-blue-700 hover:to-indigo-800 cursor-pointer text-white text-xs px-4 py-2 rounded-xl shadow-md flex justify-center items-center gap-1.5 transition border border-transparent">
                 <svg class="size-4 text-white" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" width="24"
                     height="24" fill="none" viewBox="0 0 24 24">
                     <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                         d="M5 12h14m-7 7V5" />
                 </svg>
-                Add New SDM
+                Tambah pegawai
             </a>
         </div>
 
@@ -48,54 +49,144 @@
                         <th class="w-[8%] px-4 py-2 primary-gray text-left font-medium text-sm">Divisi</th>
                         <th class="w-[3%] px-2 py-2 primary-gray text-left font-medium text-sm">Role</th>
                         <th class="w-[8%] px-4 py-2 primary-gray text-left font-medium text-sm">Email</th>
-                        <th class="w-[6%] py-2 primary-gray text-left font-medium text-sm w-24">Action</th>
+                        <th class="w-44 px-4 py-2 primary-gray text-center font-medium text-sm">Action</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200">
                     <!-- Row -->
                     @foreach ($employees as $index => $employee)
-                        <tr class="group hover:bg-[#F5F5F5] cursor-pointer font-medium" onclick="window.location='{{ route('admin.edit', $employee->id) }}'">
-                            <td
-                                class="pl-6 py-2 text-sm">
+                        <tr class="group hover:bg-[#F5F5F5] font-medium transition">
+                            <td class="pl-6 py-2.5 text-sm text-gray-500">
                                 {{ $employees->firstItem() + $index }}
                             </td>
-                            <td
-                                class="px-4 py-2 text-sm">
-                                {{ $employee->user->name ?? 'No username' }}
+                            <td class="px-4 py-2.5 text-sm">
+                                <a href="{{ route('admin.edit', $employee->id) }}" class="font-bold text-gray-900 hover:text-blue-600 transition flex items-center gap-1.5" title="Klik untuk edit data">
+                                    <img src="{{ $employee->photo ? asset('storage/' . $employee->photo) : asset('blank_profile.png') }}"
+                                        alt="" width="32" height="32" loading="lazy" class="w-8 h-8 rounded-full object-cover">
+                                    {{ $employee->user->name ?? 'No username' }}
+                                </a>
                             </td>
-                            <td
-                                class="px-2 py-2 text-sm">
-                                {{ $employee->role->name ?? 'No devisi' }}
+                            <td class="px-2 py-2.5 text-sm">
+                                <span class="px-2.5 py-0.5 rounded-lg text-xs font-semibold bg-gray-100 text-gray-700">
+                                    {{ $employee->role->name ?? 'No devisi' }}
+                                </span>
                             </td>
-                            <td
-                                class="px-4 py-2 text-sm">
-                                {{ $employee->user->role ?? 'No role' }}
+                            <td class="px-4 py-2.5 text-sm">
+                                @if($employee->user?->role === 'admin')
+                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800">
+                                        Admin Utama
+                                    </span>
+                                @elseif($employee->user?->role === 'supervisor')
+                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-extrabold bg-purple-100 text-purple-800">
+                                        Koordinator
+                                    </span>
+                                @else
+                                    <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800">
+                                        Pegawai
+                                    </span>
+                                @endif
                             </td>
-                            <td
-                                class="px-4 py-2 text-sm">
+                            <td class="px-4 py-2.5 text-sm text-gray-600">
                                 {{ $employee->user->email ?? 'No email' }}
                             </td>
-                            <td class="py-2 text-sm">
-                                <button type="button"
-                                    class="bg-primary-red text-white px-2 py-[3px] text-sm rounded-lg delete-btn-user"
-                                    data-id="{{ $employee->id }}">
-                                    Delete
-                                </button>
+                            <td class="py-2.5 px-4 text-sm text-center" onclick="event.stopPropagation()">
+                                <div class="flex items-center justify-center gap-2">
+                                    <a href="{{ route('admin.edit', $employee->id) }}" onclick="event.stopPropagation()"
+                                        style="background-color: #2563eb; color: #ffffff !important; border: 1px solid #3b82f6;"
+                                        class="btn-colorful px-3.5 py-1.5 text-white rounded-xl text-xs font-bold transition shadow-sm flex items-center gap-1 hover:opacity-95 active:shadow-inner"
+                                        title="Ubah data & password">
+                                        <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" /></svg>
+                                        Rubah
+                                    </a>
+                                    <button type="button" onclick="event.stopPropagation(); confirmDeleteDirect({{ $employee->id }}, '{{ addslashes($employee->user?->name ?? 'Pegawai') }}')"
+                                        style="background-color: #e11d48; color: #ffffff !important; border: 1px solid #f43f5e;"
+                                        class="btn-colorful px-3.5 py-1.5 text-white rounded-xl text-xs font-bold shadow-sm transition flex items-center gap-1 hover:opacity-95 active:shadow-inner cursor-pointer"
+                                        title="Hapus akun pegawai ini">
+                                        <svg class="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
+                                        Hapus
+                                    </button>
+                                </div>
                             </td>
                         </tr>
                     @endforeach
                     <!-- Row -->
                 </tbody>
             </table>
-            <div class="flex justify-between items-center my-5 pl-5">
-                {{ $employees->appends(['search' => $search, 'role' => $roleFilter])->links() }}
-            </div>
+            @if($employees->hasPages())
+                <div class="flex justify-between items-center my-5 px-6">
+                    {{ $employees->appends(['search' => $search, 'role' => $roleFilter])->links() }}
+                </div>
+            @endif
         </div>
     </main>
 </x-layouts.layout>
 <script>
-    document.getElementById('roleFilter').addEventListener('change', function() {
-        // Kirim form secara otomatis
-        document.getElementById('filterForm').submit();
-    });
+    // SweetAlert Konfirmasi Hapus Langsung dari Tabel Admin
+    function confirmDeleteDirect(employeeId, employeeName) {
+        if (typeof Swal !== 'undefined') {
+            Swal.fire({
+                title: '<span style="color: #991b1b; font-weight: 800;">Hapus Akun SDM?</span>',
+                html: `
+                    <div style="text-align: left; font-size: 13px; color: #374151; line-height: 1.6;">
+                        <p>Apakah Anda yakin ingin menghapus akun: <b style="color: #1e3a8a;">${employeeName}</b>?</p>
+                        <div style="background: #fff1f2; border: 1px solid #fecdd3; padding: 10px 14px; border-radius: 12px; margin-top: 10px; color: #9f1239; font-size: 12px;">
+                            <b>Peringatan:</b> Akun pengguna dan seluruh data absensinya akan dihapus permanen dari sistem.
+                        </div>
+                    </div>
+                `,
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Ya, Hapus Sekarang!',
+                cancelButtonText: 'Batal',
+                confirmButtonColor: '#e11d48',
+                cancelButtonColor: '#64748b',
+                customClass: {
+                    popup: 'rounded-2xl shadow-2xl border border-rose-200',
+                    confirmButton: 'px-5 py-2.5 rounded-xl font-bold shadow-md text-white transition active:scale-95',
+                    cancelButton: 'px-4 py-2.5 rounded-xl font-semibold transition active:scale-95'
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+                    fetch(`/admin/${employeeId}`, {
+                        method: 'DELETE',
+                        headers: {
+                            'X-CSRF-TOKEN': csrfToken,
+                            'Accept': 'application/json'
+                        }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        if (data.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Berhasil Dihapus!',
+                                text: `Akun ${employeeName} telah berhasil dihapus.`,
+                                confirmButtonColor: '#2563eb'
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Gagal!', data.message || 'Gagal menghapus user.', 'error');
+                        }
+                    })
+                    .catch(err => {
+                        Swal.fire('Error!', 'Terjadi kendala saat menghapus data.', 'error');
+                    });
+                }
+            });
+        } else {
+            if (confirm(`Apakah Anda yakin ingin menghapus akun pegawai ${employeeName}?`)) {
+                const form = document.createElement('form');
+                form.method = 'POST';
+                form.action = `/admin/${employeeId}`;
+                form.innerHTML = `
+                    <input type="hidden" name="_token" value="${document.querySelector('meta[name="csrf-token"]')?.getAttribute('content')}">
+                    <input type="hidden" name="_method" value="DELETE">
+                `;
+                document.body.appendChild(form);
+                form.submit();
+            }
+        }
+    }
 </script>

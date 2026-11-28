@@ -87,3 +87,58 @@
 .bg-dark-blue {
   background-color: var(--dark-blue-color);
 }
+
+/* ==========================================================================
+   INTERACTIVE BUTTON STYLES:
+   - Tombol tetap BERWARNA cerah dan menarik sesuai identitas masing-masing.
+   - Saat tombol di-klik (:active / .btn-clicked): efek tactile shadow + slight scale,
+     warna asli tombol TETAP dipertahankan (tidak berubah menjadi abu/putih).
+   ========================================================================== */
+
+button:active,
+a.btn:active,
+.btn-colorful:active,
+.btn-clicked {
+  box-shadow: inset 0 3px 8px rgba(0, 0, 0, 0.25) !important;
+  transform: translateY(1px) scale(0.97) !important;
+  outline: none !important;
+}
+
+/* Tab aktif di dashboard */
+.tab-btn.active-tab {
+  background-color: #2563eb !important;
+  background-image: none !important;
+  color: #ffffff !important;
+  border: 2px solid #facc15 !important;
+  box-shadow: 0 4px 14px rgba(37, 99, 235, 0.4) !important;
+}
+
+/* Hindari tombol terlihat pudar / disable warna abu-abu kusam */
+button:disabled,
+button[disabled],
+.btn-disabled {
+  cursor: not-allowed !important;
+  opacity: 0.92 !important;
+  filter: saturate(1.05) !important;
+}
+
+button:disabled:active,
+button[disabled]:active {
+  transform: none !important;
+}
+
+/* Utility Class untuk Tombol Berwarna Cerah & Menarik */
+.btn-colorful {
+  font-weight: 700;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+}
+
+.btn-colorful:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+}
+
+.btn-colorful:active {
+  transform: scale(0.97);
+}

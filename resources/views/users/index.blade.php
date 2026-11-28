@@ -14,7 +14,7 @@
         <div class="bg-white shadow-md rounded-lg p-4">
             <div class="flex justify-between items-center mb-4">
                 <div class="ml-auto flex items-center">
-                    <form method=" class="flex mb-4">
+                    <form method="GET" class="flex mb-4">
                         <input type="text" name="search" class="border border-gray-300 rounded-md px-4 py-2"
                             placeholder="Search tasks..." value="{{ request('search') }}">
                         <button type="submit" class="bg-gray-100 hover:bg-gray-200 px-4 py-2 ml-2 rounded-md">
@@ -29,7 +29,7 @@
                 </div>
             </div>
 
-            <table class="w-full table-auto">
+            <table data-mobile-pages class="w-full table-auto">
                 <thead>
                     <tr class="text-left text-gray-600">
                         <th class="py-2">Username</th>
